@@ -159,8 +159,6 @@ def crossmatch(obj1, obj2,
 
         # Post quick astropy cross-match (circular matching) to now check if source is within a defined ellipse
         for i, obj1_id in enumerate(np.where(_mask)[0]):
-            a = obj1.semi_major(mask=obj1_id, with_unit=False, to_unit=u.deg)
-            b = obj1.semi_minor(mask=obj1_id, with_unit=False, to_unit=u.deg)
             pa = obj1.df.iloc[obj1_id][obj1.cols.pa.label]
             gal = Ellipse(
                 x = sc_obj1[obj1_id].ra.deg,
@@ -174,8 +172,12 @@ def crossmatch(obj1, obj2,
 
             x, y = sc_obj2.ra.deg, \
                    sc_obj2.dec.deg,
-            e_x, e_y = obj2.prop_to_unit('ra_err', unit, mask=obj2_mask), \
-                       obj2.prop_to_unit('dec_err', unit, mask=obj2_mask)
+            try:
+                e_x, e_y = obj2.prop_to_unit('ra_err', unit, mask=obj2_mask), \
+                           obj2.prop_to_unit('dec_err', unit, mask=obj2_mask)
+            except AttributeError:
+                e_x, e_y = obj2.semi_major(mask=obj2_mask, with_unit=False, to_unit=u.deg), \
+                           obj2.semi_minor(mask=obj2_mask, with_unit=False, to_unit=u.deg)
 
             # Update mask  -- this line could be parallelized (vectorized?)
             b = gal.is_point_inside(x, y) | \

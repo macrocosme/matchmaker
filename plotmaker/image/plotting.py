@@ -46,12 +46,27 @@ def plot_panstarrs_filter(obj1, obj2,
         gc.show_colorscale(vmin = med-15*mad,
                            vmax = med+15*mad,
                            interpolation = 'none',
-                           cmap = 'Greys')
+                           # kernel='gauss',
+                           cmap = 'RdBu_r')
+
+        gc.show_contour(d,
+                        colors=['#cb181d',
+                                '#fb6a4a',
+                                '#fcae91'],
+                        labels=[r'$\mu+5\sigma$',
+                                r'$\mu+10\sigma$',
+                                r'$\mu+15\sigma$'],
+                        alpha=0.5,
+                        levels=[med + 5*mad,
+                                med + 10*mad,
+                                med + 15*mad]
+                        )
+
         del d
 
-        gc.recenter(row_obj1[obj1.cols.ra.label],
-                    row_obj1[obj1.cols.dec.label],
-                    radius=set_image_radii(obj2, unit=u.deg, stretch=stretch))
+        # gc.recenter(row_obj1[obj1.cols.ra.label],
+        #             row_obj1[obj1.cols.dec.label],
+        #             radius=set_image_radii(obj2, unit=u.deg, stretch=stretch))
 
         # Obj2 DATA
         filename_obj2 = obj2.matches[obj1.name].images[i].file_location
@@ -59,29 +74,32 @@ def plot_panstarrs_filter(obj1, obj2,
         dd, dd_med, dd_mad, _  = collect_statistics(filename_obj2)
         bmaj, bmin, bpa = get_beam_info(filename_obj2)
         gc.show_contour(dd,
-                        colors=['#7fcdbb', '#edf8b1', '#c7e9b4', '#ffffd9'],
-                        labels=[r'$\mu+3\sigma$', r'$\mu+5\sigma$', r'$\mu+10\sigma$', r'$\mu+15\sigma$'],
+                        colors=['#edf8b1',
+                                '#c7e9b4',
+                                '#ffffd9'],
+                        labels=[r'$\mu+5\sigma$',
+                                r'$\mu+10\sigma$',
+                                r'$\mu+15\sigma$'],
                         alpha=0.75,
-                        levels=[dd_med + 3*dd_mad,
-                                dd_med + 5*dd_mad,
+                        levels=[dd_med + 5*dd_mad,
                                 dd_med + 10*dd_mad,
                                 dd_med + 15*dd_mad]
                         )
         del dd
         # gc._ax1.legend()
 
-        try:
-            gc.show_ellipses(row_obj1[obj1.cols.ra.label],
-                             row_obj1[obj1.cols.dec.label],
-                             width=obj1.semi_major(i, to_unit=u.deg) * 2,
-                             height=obj1.semi_minor(i, to_unit=u.deg) * 2,
-                             angle=-row_obj1[obj1.cols.pa.label],
-                             edgecolor=pink_rgb,
-                             linestyle='-',
-                             facecolor='none',
-                             zorder=100)
-        except AttributeError:
-            pass
+        # try:
+        #     gc.show_ellipses(row_obj1[obj1.cols.ra.label],
+        #                      row_obj1[obj1.cols.dec.label],
+        #                      width=obj1.semi_major(i, to_unit=u.deg) * 2,
+        #                      height=obj1.semi_minor(i, to_unit=u.deg) * 2,
+        #                      angle=-row_obj1[obj1.cols.pa.label],
+        #                      edgecolor=pink_rgb,
+        #                      linestyle='-',
+        #                      facecolor='none',
+        #                      zorder=100)
+        # except AttributeError:
+        #     pass
 
         gc.add_beam(major=bmaj, minor=bmin, angle=bpa)
         gc.beam.set_edgecolor('black')
@@ -90,36 +108,36 @@ def plot_panstarrs_filter(obj1, obj2,
 
         gc.show_markers(row_obj1[obj1.cols.ra.label],
                         row_obj1[obj1.cols.dec.label],
-                        marker='*',
-                        facecolor='#edf8b1',
-                        edgecolor='#edf8b1',
+                        marker='+',
+                        facecolor='cyan', #'#edf8b1',
+                        edgecolor='cyan', #'#edf8b1',
                         alpha=0.75,
                         zorder=100)
 
         gc.show_markers(row_obj2[obj2.cols.ra.label],
                         row_obj2[obj2.cols.dec.label],
-                        marker='+',
+                        marker='*',
                         alpha=0.75,
-                        edgecolor=blue_rgb, 
-                        facecolor=blue_rgb)
+                        edgecolor='#edf8b1',
+                        facecolor='#edf8b1')
 
-        gc.show_ellipses(row_obj2[obj2.cols.ra.label],
-                         row_obj2[obj2.cols.dec.label],
-                         width=(row_obj2[obj2.cols.ra_err.label] * obj2.cols.ra_err.unit).to(u.deg) * 2,
-                         height=(row_obj2[obj2.cols.dec_err.label] * obj2.cols.dec_err.unit).to(u.deg) * 2,
-                         angle=0,
-                         edgecolor=blue_rgb,
-                         linestyle='--',
-                         facecolor='none')
-
-        gc.show_ellipses(row_obj2[obj2.cols.ra.label],
-                         row_obj2[obj2.cols.dec.label],
-                         width=obj2.semi_major(j, to_unit=u.deg) * 2,
-                         height=obj2.semi_minor(j, to_unit=u.deg) * 2,
-                         angle=-row_obj2[obj2.cols.pa.label],
-                         edgecolor=blue_rgb,
-                         linestyle='-',
-                         facecolor='none')
+        # gc.show_ellipses(row_obj2[obj2.cols.ra.label],
+        #                  row_obj2[obj2.cols.dec.label],
+        #                  width=(row_obj2[obj2.cols.ra_err.label] * obj2.cols.ra_err.unit).to(u.deg) * 2,
+        #                  height=(row_obj2[obj2.cols.dec_err.label] * obj2.cols.dec_err.unit).to(u.deg) * 2,
+        #                  angle=0,
+        #                  edgecolor=blue_rgb,
+        #                  linestyle='--',
+        #                  facecolor='none')
+        #
+        # gc.show_ellipses(row_obj2[obj2.cols.ra.label],
+        #                  row_obj2[obj2.cols.dec.label],
+        #                  width=obj2.semi_major(j, to_unit=u.deg) * 2,
+        #                  height=obj2.semi_minor(j, to_unit=u.deg) * 2,
+        #                  angle=-row_obj2[obj2.cols.pa.label],
+        #                  edgecolor=blue_rgb,
+        #                  linestyle='-',
+        #                  facecolor='none')
 
 
         # Find all other galaxies in image frame
@@ -170,22 +188,35 @@ def plot_panstarrs_filter(obj1, obj2,
         #                              facecolor='none')
 
         # gc.set_title('LoTSS df id: %d' %j)
-        gc.set_title('LoTSS df id: {}, {}{}'.format(
-            j,
-            row_obj1[obj1.cols.name.label],
-            ':Type {}'.format(row_obj1[obj1.cols.obj_type.label]) if obj1.prop('obj_type') is not None else ''
-        ))
+        # gc.set_title('LoTSS df id: {}, {}{}'.format(
+        #     j,
+        #     row_obj1[obj1.cols.name.label],
+        #     ':Type {}'.format(row_obj1[obj1.cols.obj_type.label]) if obj1.prop('obj_type') is not None else ''
+        # ))
+
+        gc.recenter(row_obj1[obj1.cols.ra.label],
+                    row_obj1[obj1.cols.dec.label],
+                    radius=set_image_radii(obj2, unit=u.deg, stretch=stretch))
 
         gc.set_theme('publication')
+        gc.ticks.set_tick_direction('in')
+        # gc.ticks.set_color('white')
+        gc.tick_labels.hide()
+        gc.axis_labels.hide()
+
+        if j == 4235104:
+            gc.add_scalebar(6/60./60.)
+            gc.scalebar.set_label('6"')
+            gc.scalebar.set_font_size(20)
+            gc.scalebar.set_color('white')
 
         outpath = check_folder_exists_or_create('images/matches/{}'.format(filter) if extra_path is None else 'images/matches/{}/{}'.format(extra_path, filter),
                                                 return_folder=True)
         # gc.save("%s/%s_%s.pdf" % (outpath, j, get_name(row_obj1[obj1.cols.ra.label],
         #                                                row_obj1[obj1.cols.dec.label])), dpi=250)
-        outfile = "%s/%s_%s.pdf" % (outpath, row_obj1[obj1.cols.name.label], j)
+        outfile = "%s/%s.pdf" % (outpath, j)
         print ('Saving to {}'.format(outfile))
         gc.save(outfile, dpi=250)
-
         gc.close()
 
 def plot_obj1_img_obj2_contour(obj1, obj2,
@@ -245,10 +276,10 @@ def plot_obj1_img_obj2_contour(obj1, obj2,
                              zorder=100)
 
             # gc.set_title('LoTSS df id: %d' %j)
-            gc.set_title('{}{}'.format(
-                    row_obj1[obj1.cols.tns.name.label],
-                    ':Type {}'.format(row_obj1[obj1.cols.obj_type.label]) #if obj1.prop('obj_type') is not None else ''
-                ))
+            # gc.set_title('{}{}'.format(
+            #         row_obj1[obj1.cols.tns.name.label],
+            #         ':Type {}'.format(row_obj1[obj1.cols.obj_type.label]) #if obj1.prop('obj_type') is not None else ''
+            #     ))
 
             gc.set_theme('publication')
 
@@ -256,7 +287,7 @@ def plot_obj1_img_obj2_contour(obj1, obj2,
                                                     return_folder=True)
 
             outfile = "{}/{}_{}.pdf".format(outpath,
-                                            row_obj1[obj1.cols.tns.name.label].replace(' ', ''),
+                                            j, #row_obj1[obj1.cols.tns.name.label].replace(' ', ''),
                                             stretch)
             print ('Saving to {}'.format(outfile))
             gc.save(outfile, dpi=250)
@@ -293,7 +324,7 @@ def plot_lotss(obj1, obj2, mask1=None, mask2=None, d2d_obj1=None, d2d_obj2=None,
 
         gc.recenter(row_obj1[obj1.cols.ra.label],
                     row_obj1[obj1.cols.dec.label],
-                    radius=set_image_radii(obj1, obj2, i, j, unit=u.deg))
+                    radius=set_image_radii(obj2, unit=u.deg))
 
         gc.show_ellipses(row_obj1[obj1.cols.ra.label],
                          row_obj1[obj1.cols.dec.label],

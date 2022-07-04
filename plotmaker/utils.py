@@ -32,3 +32,13 @@ def set_size(width=800, fraction=1, vertical=True):
     fig_height_in = fig_width_in * golden_ratio
 
     return (fig_width_in, fig_height_in) if not vertical else (fig_height_in, fig_width_in)
+
+def set_fig_dims(direction, data_arr):
+    if direction == 'horizontal':
+        ncols = len(data_arr)
+        nrows = 1
+    elif direction == 'vertical':
+        ncols = 1
+        nrows = len(data_arr)
+
+    return ncols, nrows
