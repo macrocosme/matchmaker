@@ -202,8 +202,8 @@ def plot_panstarrs_filter(obj1, obj2,
         try:
             gc.ticks.set_tick_direction('in')
         except AttributeError: # aplpy <= 2.1.0 raises an error
-            pass
- 
+            gc.ticks.hide()
+
         gc.tick_labels.hide()
         gc.axis_labels.hide()
 
