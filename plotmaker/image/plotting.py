@@ -199,16 +199,18 @@ def plot_panstarrs_filter(obj1, obj2,
                     radius=set_image_radii(obj2, unit=u.deg, stretch=stretch))
 
         gc.set_theme('publication')
-        gc.ticks.set_tick_direction('in')
-        # gc.ticks.set_color('white')
+        try:
+            gc.ticks.set_tick_direction('in')
+        except AttributeError: # aplpy <= 2.1.0 raises an error
+            pass
+ 
         gc.tick_labels.hide()
         gc.axis_labels.hide()
 
-        if j == 4235104:
-            gc.add_scalebar(6/60./60.)
-            gc.scalebar.set_label('6"')
-            gc.scalebar.set_font_size(20)
-            gc.scalebar.set_color('white')
+        gc.add_scalebar(6/60./60.)
+        gc.scalebar.set_label('6"')
+        gc.scalebar.set_font_size(20)
+        gc.scalebar.set_color('white')
 
         outpath = check_folder_exists_or_create('images/matches/{}'.format(filter) if extra_path is None else 'images/matches/{}/{}'.format(extra_path, filter),
                                                 return_folder=True)
