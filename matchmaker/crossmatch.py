@@ -105,8 +105,8 @@ def crossmatch(obj1, obj2,
     # Astropy based first cross-match on coordinates and position error
     # TODO: check for parallelization
     for ra_err, dec_err in ((2,1), (0,1), (1,1),
-                            (2,0), (0,0), (1,0),
-                            (2,2), (0,2), (1,2)) :
+                            (2,0),        (1,0),
+                            (2,2), (0,2), (1,2), (0,0)) : # finishing with 0,0 to save d2d of central position.
         '''
         ra_err, dec_err description:
 
