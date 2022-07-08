@@ -26,7 +26,7 @@ def chance_association(obj1:Catalog,
         area=area
     ).value
 
-    obj1.matches[catalogue_name].set_chance(total, expected)
+    obj1.matches[catalogue_name].set_chance(total, total * expected)
 
 def chance_association_ab(obj1:Catalog,
                           obj1_ids:np.ndarray,

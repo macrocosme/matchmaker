@@ -24,6 +24,7 @@ class First(Catalog):
         self.frequency_band = 'L'
         self.central_frequency = 1400 * u.MHz
 
+        self.area = 10575 * u.deg**2
 
         if load_data:
             self.load_data()
