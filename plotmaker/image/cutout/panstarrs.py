@@ -45,51 +45,53 @@ def download_images(obj1, obj2, mask1=None, mask2=None,
             download = True
 
         if download:
-            try:
-                ra = obj1_row[obj1.cols.ra.label]
-                dec = obj1_row[obj1.cols.dec.label]
+            # try:
+            ra = obj1_row[obj1.cols.ra.label]
+            dec = obj1_row[obj1.cols.dec.label]
 
-                size = arcsec_to_pixel(set_image_radii(obj2, unit=u.arcsec, stretch=stretch))
-                check_folder_exists_or_create(output_path, return_folder=False)
+            size = arcsec_to_pixel(set_image_radii(obj2, unit=u.arcsec, stretch=stretch))
+            check_folder_exists_or_create(output_path, return_folder=False)
 
-                fname = wget.download("{}/ps1filenames.py?ra={:f}&dec={:f}".format(base_url, ra, dec),
-                                      out=check_folder_exists_or_create('tmp/'))
+            fname = wget.download("{}/ps1filenames.py?ra={:f}&dec={:f}".format(base_url, ra, dec),
+                                  out=check_folder_exists_or_create('tmp/'))
 
-                image = obj1.matches[obj2.name].images[i] = Image(source_catalog='panstarrs')
-                with open(fname, "r") as f:
-                    for line in f.readlines()[1:]:
-                        w = line.strip("\n").split(" ")
-                        filter = w[4]
-                        red = w[7]
-                        image.filters[filter] = Column()
-                        image.filters[filter].remote_download = "{}/fitscut.cgi?" \
-                                                                "ra={:f}&" \
-                                                                "dec={:f}&" \
-                                                                "red={}&" \
-                                                                "wcs=true&" \
-                                                                "format=fits&" \
-                                                                "size={}".format(base_url, ra, dec, red, size)
-                        try:
-                            remove_file_if_exists(image.filters[filter].file_location)
-                        except AttributeError:
-                            if check_files_are_in:
-                                image.filters[filter].file_location = wget.download(
-                                    remove_file_if_exists(image.filters[filter].remote_download, return_filename=True),
-                                    out=output_path
-                                )
-                            else:
-                                pass
+            image = obj1.matches[obj2.name].images[i] = Image(source_catalog='panstarrs')
 
-                        if not check_files_are_in:
-                            image.filters[filter].file_location = wget.download(
-                                remove_file_if_exists(image.filters[filter].remote_download, return_filename=True),
-                                out=output_path
-                            )
+            with open(fname, "r") as f:
+                for line in f.readlines()[1:]:
+                    w = line.strip("\n").split(" ")
+                    filter = w[4]
+                    red = w[7]
+                    image.filters[filter] = Column()
+                    image.filters[filter].remote_download = "{}/fitscut.cgi?" \
+                                                            "ra={:f}&" \
+                                                            "dec={:f}&" \
+                                                            "red={}&" \
+                                                            "wcs=true&" \
+                                                            "format=fits&" \
+                                                            "size={}".format(base_url, ra, dec, red, size)
+                    # try:
+                    #     remove_file_if_exists(image.filters[filter].file_location)
+                    # except AttributeError:
+                    #     pass
+                    #     # if check_files_are_in:
+                    #     #     image.filters[filter].file_location = wget.download(
+                    #     #         remove_file_if_exists(image.filters[filter].remote_download, return_filename=True),
+                    #     #         out=output_path
+                    #     #     )
+                    #     # else:
+                    #     #     pass
 
-                    remove_file_from_folder(fname)
-                    if i in obj1.matches[obj2.name].missing_images:
-                        del obj1.matches[obj2.name].missing_images[np.where(obj1.matches[obj2.name].missing_images == i)[0][0]]
+                    # if not check_files_are_in:
+                    image.filters[filter].file_location = wget.download(
+                        remove_file_if_exists(image.filters[filter].remote_download, return_filename=True),
+                        out="{}{}.fits".format(output_path, i)
+                    )
 
-            except: # TODO: except too general: should be only when download failed
-                obj1.matches[obj2.name].missing_images.append(i)
+                remove_file_from_folder(fname)
+                if i in obj1.matches[obj2.name].missing_images:
+                    del obj1.matches[obj2.name].missing_images[np.where(obj1.matches[obj2.name].missing_images == i)[0][0]]
+
+            # except: # TODO: except too general: should be only when download failed
+            #     obj1.matches[obj2.name].missing_images.append(i)
 

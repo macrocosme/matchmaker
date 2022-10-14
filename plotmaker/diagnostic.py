@@ -517,13 +517,13 @@ def spectrum(datasets:dict, reference_dataset:str, source_dataset:str, reference
                     check_folder_exists_or_create(path)
                     filename = '{}/spectra_{}.pdf'.format(path, i)
                     print ('saving to {}'.format(filename))
-                    if i not in datasets[reference_dataset].matches[source_dataset].radio_spectra.keys():
-                        plt.savefig(filename)
-                        datasets[reference_dataset].matches[source_dataset].radio_spectra[i] = {
-                            'freq': freq[_sorted],
-                            'flux': flux[_sorted],
-                            'flux_err': flux_err[_sorted]
-                        }
+                    # if i not in datasets[reference_dataset].matches[source_dataset].radio_spectra.keys():
+                    plt.savefig(filename)
+                    datasets[reference_dataset].matches[source_dataset].radio_spectra[i] = {
+                        'freq': freq[_sorted],
+                        'flux': flux[_sorted],
+                        'flux_err': flux_err[_sorted]
+                    }
 
     return common
     # else:

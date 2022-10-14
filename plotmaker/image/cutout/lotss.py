@@ -77,8 +77,8 @@ def make_lotss_cutouts_obj1_download_script(obj1, obj_lotss, mask1=None,
             for (i, row_obj1) in matched_obj1.iterrows():
 
                 field, obs_date = obj_lotss.get_closest_field(row_obj1[obj1.cols.ra.label],
-                                                    row_obj1[obj1.cols.dec.label],
-                                                    row_obj1[obj1.cols.tns.discovery_date_ut.label])
+                                                              row_obj1[obj1.cols.dec.label],
+                                                              row_obj1[obj1.cols.tns.discovery_date_ut.label])
                 if field is not None:
                     print (i, row_obj1['Name'], row_obj1['ra'], row_obj1['dec'], obs_date)
                     line = 'python radio_cutout_byname.py "{}" {};'.format(

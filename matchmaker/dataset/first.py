@@ -9,7 +9,7 @@ class First(Catalog):
     name = 'first'
 
 
-    def __init__(self, load_data=False, constrain=True):
+    def __init__(self, load_data=False, constrain=False):
         super().__init__(ra=Column('RA', u.deg), dec=Column('DEC', u.deg))
         self.cols.ra_err = Column()
         self.cols.dec_err = Column()
@@ -27,9 +27,9 @@ class First(Catalog):
         self.area = 10575 * u.deg**2
 
         if load_data:
-            self.load_data()
+            self.load_data(constrain=constrain)
 
-    def load_data(self):
+    def load_data(self, constrain=False):
         df = load_fits_as_dataframe(self.file_location)
 
         # Some RA and DEC uncertainties are marked as -99
@@ -37,6 +37,8 @@ class First(Catalog):
         # The following comparison may break at some point...
         # df.loc[df[self.cols.ra_err.label] == -99] = 0.
         # df.loc[df[self.cols.dec_err.label] == -99] = 0.
+        if constrain:
+            df = df.loc[df[self.cols.measure.total_flux.label] >= 1.5]
 
         self.df = df
 

@@ -8,7 +8,7 @@ class Clu(Catalog):
     file_location = DATA_BASE_PATH + 'data/CLU/CLU_20190708_marshalFormat.csv'
     name = 'clu'
 
-    def __init__(self, load_data=False, constrain=True, use_a=True, use_distance=True):
+    def __init__(self, load_data=False, constrain=True, use_a=True, use_distance=True, constrain_mass=True):
         super().__init__(ra=Column('ra', u.deg), dec=Column('dec', u.deg), use_distance=use_distance)
         self.cols.a = Column('a', u.arcmin)
         self.cols.b = Column('b', u.arcmin)
@@ -25,13 +25,13 @@ class Clu(Catalog):
         self.area_dr2 = (4178 * u.deg**2) + (1457 * u.deg**2)
 
         if load_data:
-            self.load_data(constrain=constrain, use_a=use_a)
+            self.load_data(constrain=constrain, use_a=use_a, constrain_mass=constrain_mass)
 
     @property
     def n_source(self):
         return len(self.df)
 
-    def load_data(self, constrain=False, use_a=True):
+    def load_data(self, constrain=False, constrain_mass=True, use_a=True):
         df = pd.read_csv(self.file_location)
         self.df = df
         if constrain:
@@ -43,12 +43,18 @@ class Clu(Catalog):
                     (~self.df['a'].isna())
                 ]
             else:
-                df = self.df.loc[
-                    (self.df['mstar'].apply(np.log10) > 7) &
-                    # (self.df['cluhamag'] < 14) &
-                    (self.df['mstar'] <= 3e9) #&
-                    # (self.df['a'].isna())
-                ]
+                if constrain_mass:
+                    df = self.df.loc[
+                        (self.df['mstar'].apply(np.log10) > 7) &
+                        (self.df['cluhamag'] < 14) &
+                        (self.df['mstar'] <= 3e9) &
+                        # (self.df['a'].isna())
+                        (~self.df['sfr_fuv'].isna())
+                    ]
+                else:
+                    df = self.df.loc[
+                        (self.df['cluhamag'] < 14)
+                    ]
             self.df = df
 
     def semi_major(self, mask=None, with_unit=False, to_unit=None):
@@ -94,9 +100,9 @@ class Clu(Catalog):
         w2w3 = df['w2mpro'] - df['w3mpro']
 
         if type(w2w3) in [np.float, np.float32, np.float64]:
-            return Path(wise.AGN_color_color_box).contains_point([w2w3, w1w2])
+            return ~Path(wise.AGN_color_color_box).contains_point([w2w3, w1w2])
         else:
-            return Path(wise.AGN_color_color_box).contains_points([w2w3, w1w2])
+            return ~Path(wise.AGN_color_color_box).contains_points(np.array([w2w3, w1w2]).T)
 
 
     def set_survey_specific_columns(self):
@@ -216,6 +222,7 @@ class Clu(Catalog):
         self.cols.measure.sfr_fuv = Column('sfr_fuv', u.Msun * u.yr**-1, "star formation rate from GALEX FUV fluxes corrected for internal dust extinction via WISE, 22um (u.Msun * u.yr**-1)")
         self.cols.measure.sfr_ha = Column('sfr_ha', u.Msun * u.yr**-1, "star formation rate from CLU-Ha fluxes corrected for internal dust extinction via WISE 22um, (u.Msun * u.yr**-1)")
         self.cols.measure.mstar = Column('mstar', u.Msun, "Stellar Mass (Msun)")
+        self.cols.measure.mstar_err = Column('mstarerr', u.Msun, "Stellar Mass uncertainty (Msun)")
         self.cols.measure.size_source = Column('size_source', None, "where was the radii taken from (a, b2a, pa)")
         self.cols.measure.btc_source = Column('btc_source', None, "nan")
         self.cols.measure.dm_source = Column('dm_source', None, "distance modulus source (main source to use)")

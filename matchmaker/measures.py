@@ -4,7 +4,6 @@ import pandas as pd
 import astropy.units as u
 from astropy.cosmology import FlatLambdaCDM
 
-
 luminosity_radio = lambda flux, lum_dist, z, alpha=-0.7: (flux * 4 * math.pi * lum_dist**2) / (1+z)**(1+alpha)
 
 

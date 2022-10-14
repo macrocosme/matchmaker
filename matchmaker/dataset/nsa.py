@@ -9,7 +9,7 @@ class Nsa(Catalog):
     file_location = DATA_BASE_PATH + 'data/NSA/nsa_v0_1_2.fits'
     name = 'nsa'
 
-    def __init__(self, load_data=False, constrain=True, use_a=True, use_distance=False):
+    def __init__(self, load_data=False, constrain=True, use_distance=False):
         super().__init__(ra=Column('RA', u.deg), dec=Column('DEC', u.deg), use_distance=use_distance)
 
         self.set_survey_specific_columns()
@@ -20,13 +20,13 @@ class Nsa(Catalog):
         self.cols.z = self.cols.all.z
 
         if load_data:
-            self.load_data(constrain=constrain, use_a=use_a)
+            self.load_data(constrain=constrain)
 
     @property
     def n_source(self):
         return len(self.df)
 
-    def load_data(self, constrain=False, use_a=True):
+    def load_data(self, constrain=False):
         # This one requiires some specific trimming for our purpose
         from astropy.io import fits
         from astropy.table import Table
@@ -49,10 +49,14 @@ class Nsa(Catalog):
         self.df = t.to_pandas()
         if constrain:
             df = self.df.loc[
-                (self.df[self.cols.mstar.label] > 1e7) &
-                (self.df[self.cols.mstar.label] <= 3e9) &
-                (self.df[self.cols.all.absmag_g.label] > -20) &
-                (self.df[self.cols.all.absmag_r.label] > -20)
+                # (self.df[self.cols.mstar.label] > 1e7)
+                (self.df[self.cols.mstar.label] <= 3e9)
+                & (self.df[self.cols.all.absmag_g.label] > -20)
+                & (self.df[self.cols.all.absmag_r.label] > -20)
+                & ((self.df[self.cols.all.haflux.label] / self.df[self.cols.all.hafluxerr.label]) > 3)
+                & (self.df[self.cols.all.haew.label] > 1)
+                & ((self.df[self.cols.all.n2flux.label] / self.df[self.cols.all.n2fluxerr.label]) >= 2)
+                & ((self.df[self.cols.all.o3flux.label] / self.df[self.cols.all.o3fluxerr.label]) >= 2)
             ]
             self.df = df
 

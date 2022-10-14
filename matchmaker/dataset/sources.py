@@ -3,12 +3,12 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 from . import DATA_BASE_PATH
 
-def frb121102_wise_image_files():
-    wise_bands = ['w1', 'w2', 'w3', 'w4']
-    frb121102_wise_files = {
-        band: DATA_BASE_PATH + 'data/FRB121102B_WISE_Files/L3a/0827p333_ab41/0827p333_ab41-{}-int-3_ra83.0375_dec33.086944_asec600.000.fits'.format(band) for band in wise_bands
-    }
-    return frb121102_wise_files
+# def frb121102_wise_image_files():
+#     wise_bands = ['w1', 'w2', 'w3', 'w4']
+#     frb121102_wise_files = {
+#         band: DATA_BASE_PATH + 'data/FRB121102B_WISE_Files/L3a/0827p333_ab41/0827p333_ab41-{}-int-3_ra83.0375_dec33.086944_asec600.000.fits'.format(band) for band in wise_bands
+#     }
+#     return frb121102_wise_files
 
 df_frb121102_wise = pd.read_csv(DATA_BASE_PATH + 'data/FRB_WISE_Files/FRB121102_WISE.csv')
 frb121102 = {
@@ -33,7 +33,8 @@ frb121102 = {
         'alpha' : -0.27, # Marcote et al (2017) -- EVN   (Spectral index)
         'alpha_err': 0.24, # Marcote et al (2017) -- EVN
         'color' : 'purple',
-        's' : 50,
+        's' : 100,
+        'zorder': 90,
         'name': 'FRB 20121102A',
         'label': 'FRB 20121102A (10 GHz)',
     }
@@ -58,7 +59,8 @@ frb190520b = {
     'alpha': -0.41, # From Zhao & Wang 2021
     'alpha_err': 0.04, # From Zhao & Wang 2021
     'color' : 'red',
-    's' : 50,
+    's' : 100,
+    'zorder': 90,
     'name': 'FRB 20190520B',
     'label': 'FRB 20190520B (3 GHz)'
 }
@@ -70,7 +72,8 @@ SGR1935_2154 = {
     'sfr_l' : 0.68, # Robitaille & Whitney 2010
     'sfr_h' : 1.45,
     'color' : 'darkgrey',
-    's' : 100,
+    's' : 50,
+    'zorder': 90,
     'label': 'SGR 1935+2154'
 }
 FRBs = [frb121102, frb190520b]#, SGR1935_2154]

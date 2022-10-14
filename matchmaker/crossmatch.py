@@ -136,20 +136,36 @@ def crossmatch(obj1, obj2,
         '''
         # print (_ra_err, _dec_err)
         if ra_err == 1:
-            ra = (_ra + _ra_err) * unit
+            ra = (_ra + _ra_err)
         elif ra_err == 2:
-            ra = (_ra - _ra_err) * unit
+            ra = (_ra - _ra_err)
         else:
-            ra = _ra * unit
+            ra = _ra
 
         if dec_err == 1:
-            dec = (_dec + _dec_err) * unit
+            dec = (_dec + _dec_err)
         elif dec_err == 2:
-            dec = (_dec - _dec_err) * unit
+            dec = (_dec - _dec_err)
         else:
-            dec = _dec * unit
+            dec = _dec
 
-        target_coords = SkyCoord(ra=ra, dec=dec)
+        # Verify we don't go beyond what's acceptable
+        ra[np.where(ra > 360)[0]] = ra[np.where(ra > 360)[0]] - 360
+        ra[np.where(ra < 0)[0]] = 360 + ra[np.where(ra < 0)[0]]
+        ra = ra * unit
+        
+        dec[np.where(dec > 90)[0]] = -(dec[np.where(dec > 90)[0]] - 90)
+        dec[np.where(dec < -90)[0]] = -(dec[np.where(dec < -90)[0]] + 90)
+        dec = dec * unit
+
+        # if np.where(dec.value > 90)[0]:
+        #     dec.value = -(dec.value - 90)
+        # elif dec.value < -90:
+        #     dec.value = -(dec.value + 90)
+        try:
+            target_coords = SkyCoord(ra=ra, dec=dec)
+        except ValueError:
+            print (dec.min(), dec.max())
         idx, sep2d, _ = source_coords.match_to_catalog_sky(target_coords)
 
         _mask |= (sep2d <= sep * unit_sep)

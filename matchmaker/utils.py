@@ -1,5 +1,7 @@
 import os
 import pickle
+import bz2
+import _pickle as cPickle
 import numpy as np
 import pandas as pd
 from astropy.io import fits
@@ -10,6 +12,7 @@ sort_dict_by_value = lambda x, reverse=False: dict(sorted(x.items(),
                                                           reverse=reverse))
 share_items = lambda a, b: not set(a).isdisjoint(b)
 intersection = lambda a, b: np.sort(list(set(a).intersection(b)))
+difference = lambda a, b: np.sort(list(set(a).difference(b)))
 
 # Functions
 def check_underscore(string):
@@ -66,6 +69,33 @@ def load(variable, state_prefix='', folder='states/'):
             return loaded
         else:
             return None
+
+def save_compressed(variable:str, data, state_prefix='', folder='states/'):
+    check_folder_exists_or_create(folder)
+
+    if state_prefix != '':
+        with bz2.BZ2File(check_slash(folder) + check_underscore(state_prefix) + variable + '.pbz2', 'w') as f:
+            cPickle.dump(data, f)
+    else:
+        with bz2.BZ2File(check_slash(folder) + variable + '.pickle', 'wb') as f:
+            cPickle.dump(data, f)
+
+def load_compressed(variable, state_prefix='', folder='states/'):
+    if state_prefix != '':
+        if os.path.exists(folder + check_underscore(state_prefix) + variable + '.pbz2'):
+            with bz2.BZ2File(folder + check_underscore(state_prefix) + variable + '.pbz2', 'rb') as f:
+                loaded = cPickle.load(f)
+            return loaded
+        else:
+            return None
+    else:
+        if os.path.exists(folder + variable + '.pbz2'):
+            with bz2.BZ2File(folder + variable + '.pbz2', 'rb') as f:
+                loaded = cPickle.load(f)
+            return loaded
+        else:
+            return None
+
 
 def load_fits_hdul(file_location):
     with fits.open(file_location) as hdul:
@@ -132,3 +162,6 @@ def get_matched(obj1, obj2, mask1=None, mask2=None):
         matched_obj2 = obj2.df.iloc[obj2.matches[obj1.name].filtered_idx]
 
     return matched_obj1, matched_obj2
+
+def eval_flux_given_spectral_index(freq1, freq2, flux1, alpha):
+    return flux1 * (freq2/freq1)**alpha

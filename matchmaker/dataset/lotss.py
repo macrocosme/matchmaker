@@ -6,6 +6,7 @@ from . import (Catalog, Column, DATA_BASE_PATH)
 from ..utils import load_fits_as_dataframe, load, get_matched
 from ..measures import luminosity_distance as _luminosity_distance
 from ..model.lofar import power_law, sigma as lum_sfr_sigma
+from ..model.wise import is_AGN
 
 class Lotss(Catalog):
     file_location = DATA_BASE_PATH + 'data/LoTSS/LoTSS_DR2_v110_masked.srl.fits'
@@ -14,7 +15,7 @@ class Lotss(Catalog):
 
     field_file_location = DATA_BASE_PATH + 'data/LoTSS/obslist.csv'
 
-    def __init__(self, load_data=True):
+    def __init__(self, load_data=True, constrain=False, smin=None, compact_only=False, single_only=False):
         # Required and practical columns
         super().__init__(ra=Column('RA', u.deg), dec=Column('DEC', u.deg))
         self.cols.ra_err = Column('E_RA', u.arcsec)
@@ -43,8 +44,39 @@ class Lotss(Catalog):
         self.cols.measure.peak_flux_err = self.cols.radio.e_peak_flux
 
         if load_data:
-            self.load_data()
+            self.load_data(constrain=constrain, smin=smin, compact_only=compact_only, single_only=single_only)
 
+    def load_data(self, constrain=False, smin=None, compact_only=False, single_only=False):
+        # LOAD LOTSS MAIN TABLE
+        self.df = load_fits_as_dataframe(self.file_location)
+
+        if constrain:
+            # _smin = 0.8 if smin is None else smin
+            if smin is not None:
+                const = (self.df[self.cols.measure.total_flux.label] >= smin) # 90% complete point-sources
+
+            if compact_only:
+                self.df['compact'] = self.r99_sigmoid(return_indices=False)
+                const &= (self.df['compact'] == True)
+
+            if single_only:
+                try:
+                    const &= (self.df[self.cols.radio.s_code.label] == 'S')  # single component
+                except UnboundLocalError:
+                    const = (self.df[self.cols.radio.s_code.label] == 'S')  # single component
+            df = self.df.loc[const]
+            df = df.reset_index().rename(
+                {'index': 'index_df_original'},
+                axis = 'columns'
+            )
+            self.df = df
+
+        self.set_dr2_regions_boxes()
+        self.n_source = len(self.df)
+
+        # LOAD LOTSS FIELDS LIST
+        self.fields = Column()
+        self.fields.df = pd.read_csv(self.field_file_location)
 
     def semi_major(self, mask=None, with_unit=False, to_unit=None):
         a = self.prop_to_unit('major', self.cols.major.unit, mask=mask, with_unit=with_unit) / 2
@@ -89,15 +121,34 @@ class Lotss(Catalog):
         # self.cols.separation = Column('separation3d-{}'.format(source.name), u.kpc)
         # self.df[self.cols.separation.label] = lotss_dist
 
-    def luminosity_distance(self, mask=None, output_units='W_Hz', with_unit=False):
+    def luminosity_distance(self, mask=None, output_units='W_Hz', with_unit=False, with_error=False):
         df = self.df if mask is None else self.df.iloc[mask]
-        return _luminosity_distance(
-            df[self.cols.z.label],
-            df[self.cols.measure.total_flux.label],
-            alpha=-0.8,
-            output_units=output_units,
-            with_unit=with_unit
-        )
+        l = _luminosity_distance(
+                df[self.cols.z.label],
+                df[self.cols.measure.total_flux.label],
+                alpha=-0.8,
+                output_units=output_units,
+                with_unit=with_unit
+            )
+        if not with_error:
+            return l
+        else:
+            l_err_low = _luminosity_distance(
+                df[self.cols.z.label],
+                df[self.cols.measure.total_flux.label] - df[self.cols.measure.total_flux_err.label],
+                alpha=-0.8,
+                output_units=output_units,
+                with_unit=with_unit
+            )
+            l_err_high = _luminosity_distance(
+                df[self.cols.z.label],
+                df[self.cols.measure.total_flux.label] + df[self.cols.measure.total_flux_err.label],
+                alpha=-0.8,
+                output_units=output_units,
+                with_unit=with_unit
+            )
+            return l, l_err_low, l_err_high
+
 
     def distance_to_lum_sfr_relation(self, obj1, mask_lotss=None, mask1=None):
         matched_obj1, matched_obj2 = get_matched(obj1, self, mask1=mask1, mask2=mask_lotss)
@@ -130,13 +181,27 @@ class Lotss(Catalog):
         else:
             return np.where(cond)[0]
 
-    def si_sp(self, catalog_name):
-        matches = self.df.iloc[self.matches[catalog_name].filtered_idx]
+    def filter_s_code(self, mask=None, s_code='S'):
+        df = self.df if mask is None else self.df.iloc[mask]
+        return df['S_Code'].values == s_code
+
+    def si_sp(self, catalog_name=None, mask=None):
+        """
+        if 'catalog_name' isn't none, it overrides 'mask'
+        """
+        if catalog_name is not None:
+            mask = self.matches[catalog_name].filtered_idx
+        matches = self.df.iloc[mask] if mask is not None else self.df
         si_sp = np.log(matches['Total_flux']/matches['Peak_flux'])
         return si_sp
 
-    def sn(self, catalog_name):
-        matches = self.df.iloc[self.matches[catalog_name].filtered_idx]
+    def sn(self, catalog_name=None, mask=None):
+        """
+        if 'catalog_name' isn't none, it overrides 'mask'
+        """
+        if catalog_name is not None:
+            mask = self.matches[catalog_name].filtered_idx
+        matches = self.df.iloc[mask] if mask is not None else self.df
         s_n = matches['Total_flux']/matches['E_Total_flux']
         return s_n
 
@@ -152,6 +217,17 @@ class Lotss(Catalog):
         # E.g. self.df.iloc[self.matches[source.name].filtered_idx[self.matches[source.name].filtered_compact_idx]]
         self.matches[catalog_name].filtered_compact_idx = np.where(si_sp <= sigmoid)[0]
 
+    def r99_sigmoid(self, mask=None, return_indices=False):
+        df = self.df if mask is None else self.df.iloc[mask]
+
+        si_sp = np.log(df['Total_flux']/df['Peak_flux'])
+        s_n = df['Total_flux']/df['E_Total_flux']
+        sigmoid = (0.42 + (1.08 / (1+(s_n/96.57)**2.49)))
+        if not return_indices:
+            return si_sp <= sigmoid
+        else:
+            return np.where(si_sp <= sigmoid)[0]
+
     def filter_mask_to_beam_size(self, catalog_name):
         # Subset of source-target cross-section where source size in LoTSS is less or equal to beam size
         matches = self.df.iloc[self.matches[catalog_name].filtered_idx][self.cols.radio.dc_maj.label]
@@ -161,16 +237,6 @@ class Lotss(Catalog):
         # E.g. source.df.iloc[self.matches[source.name].mask_idx[self.matches[source.name].filtered_compact_idx]]
         # E.g. self.df.iloc[self.matches[source.name].filtered_idx[self.matches[source.name].filtered_compact_idx]]
         self.matches[catalog_name].filtered_compact_idx = np.where(matches <= beam)[0]
-
-    def load_data(self):
-        # LOAD LOTSS MAIN TABLE
-        self.df = load_fits_as_dataframe(self.file_location)
-        self.set_dr2_regions_boxes()
-        self.n_source = len(self.df)
-
-        # LOAD LOTSS FIELDS LIST
-        self.fields = Column()
-        self.fields.df = pd.read_csv(self.field_file_location)
 
     def get_closest_field(self, ra, dec, min_date=None):
         # Adapted from H. Vedantham's script

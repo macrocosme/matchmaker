@@ -15,7 +15,9 @@ def plot_sdss_spectrum(spectrum, idx, comment=None, save=False, path='spectra/ma
     ax.plot(spec.spectral_axis, spec.flux)
     ax.set_xlabel(r'Wavelength ({})'.format(spec.spectral_axis.unit.to_string('latex_inline')))
     ax.set_ylabel(r'Flux ({})'.format(spec.flux.unit.to_string('latex_inline')))
-    ax.set_title(idx if comment is None else '{} {}'.format(idx, comment))
+    if comment is not None:
+        ax.set_title(comment)
+    # ax.set_title('idx' if comment is None else '{} {}'.format(idx, comment))
 
     if save:
         check_folder_exists_or_create(path)

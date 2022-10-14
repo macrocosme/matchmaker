@@ -5,7 +5,7 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 
 # todo: set BASEPATH somewhere else
-DATA_BASE_PATH = 'SET_THIS_PATH'
+DATA_BASE_PATH = '/Users/vohl/Documents/code/EOSC/'
 
 def box2d(obj, box_xxyy):
     df = obj.df.loc[
@@ -30,6 +30,11 @@ class Column:
         self.unit = unit
         self.description = description
 
+    def list_columns(self):
+        # This could be done better. Currently, it only prints the first level.
+        for k, _ in self.__dict__.items():
+            print(k)
+
 class Columns:
     def __init__(self, ra=None, dec=None):
         self.ra = ra
@@ -37,6 +42,11 @@ class Columns:
 
     def prop(self, prop):
         return getattr(self, prop)
+
+    def list_columns(self):
+        # This could be done better. Currently, it only prints the first level.
+        for k, _ in self.__dict__.items():
+            print(k)
 
 class File:
     def __init__(self, location=None, local:str=None, remote=None):
@@ -67,6 +77,9 @@ class Match:
         self.from_to = from_to
         self._chance = None
         self.images = {}
+
+        self.further_filters = {}
+
         if mask is not None:
             self.mask = mask
         if idx is not None:
@@ -88,16 +101,26 @@ class Match:
         return self.idx[self.mask]
 
     @property
+    def anti_filtered_idx(self):
+        return self.idx[~self.mask]
+
+    @property
     def mask_idx(self):
         return np.where(self.mask)[0]
+
+    @property
+    def anti_mask_idx(self):
+        return np.where(~self.mask)[0]
 
     @property
     def filtered_sep2d(self):
         return self.sep2d[self.mask]
 
-    @property
-    def filtered_sep3d(self):
-        return self.sep3d[self.mask]
+    # @property
+    # def filtered_sep3d(self):
+    #     return self.sep3d # already includes mask filtering (see lotss.py)
+    #                       # writing this comment highlights that sep3d could be handled differently
+    #                       # (what if it's not from lotss?)
 
 class Catalog:
     df = None

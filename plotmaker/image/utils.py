@@ -1,8 +1,8 @@
 import astropy.units as u
 
-def set_image_radii(obj2, unit=u.arcsec, stretch=4,):
+def set_image_radii(obj2, unit=u.arcsec, stretch=4, return_unit=False):
     # Let's face it, this is about lotss... Select either beam size or object size if bigger than beam
-    beam = obj2.beam['bmaj'].to(unit).value
+    beam = obj2.beam['bmaj'].to(unit) if return_unit else obj2.beam['bmaj'].to(unit).value
     return stretch * beam
 
 def set_image_radii_from_obj_size(obj1, obj2, i, j, unit=u.arcsec, stretch=4,):
