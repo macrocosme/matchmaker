@@ -48,7 +48,8 @@ class Lotss(Catalog):
 
     def load_data(self, constrain=False, smin=None, compact_only=False, single_only=False):
         # LOAD LOTSS MAIN TABLE
-        self.df = load_fits_as_dataframe(self.file_location)
+        df = load_fits_as_dataframe(self.file_location)
+        self.df = df
 
         if constrain:
             # _smin = 0.8 if smin is None else smin
@@ -149,6 +150,32 @@ class Lotss(Catalog):
             )
             return l, l_err_low, l_err_high
 
+    def radio_loudness(self, obj1, mask_lotss=None, mask1=None, verbose=False):
+        matched_obj1, matched_obj2 = get_matched(obj1, self, mask1=mask1, mask2=mask_lotss)
+        S = matched_obj2[self.cols.measure.total_flux.label]
+        try:
+            flux = (S.values * self.cols.measure.total_flux.unit).to(u.Jy).value
+        except AttributeError:
+            flux = (S * self.cols.measure.total_flux.unit).to(u.Jy).value
+        m = -2.5 * np.log10(flux/(3631 * u.Jy).value) # Should be double checked to scale from 1.4 GHz to 144 MHz
+
+        try:
+            g = obj1.df.iloc[mask1][obj1.cols.sdss.modelmag_g.label].values
+        except AttributeError:
+            g = obj1.df.iloc[mask1][obj1.cols.sdss.modelmag_g.label]
+        r_g = 0.4 * (g - m)
+        if np.isnan(r_g):
+            try:
+                g = obj1.df.iloc[mask1][obj1.cols.kron.kronmag_g.label].values
+            except AttributeError:
+                g = obj1.df.iloc[mask1][obj1.cols.kron.kronmag_g.label]
+            r_g = 0.4 * (g - m)
+        if verbose:
+            print ('s', flux)
+            print ('m', m)
+            print ('g', g)
+            print ('r_g', r_g)
+        return r_g
 
     def distance_to_lum_sfr_relation(self, obj1, mask_lotss=None, mask1=None):
         matched_obj1, matched_obj2 = get_matched(obj1, self, mask1=mask1, mask2=mask_lotss)

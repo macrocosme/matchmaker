@@ -8,7 +8,7 @@ class Clu(Catalog):
     file_location = DATA_BASE_PATH + 'data/CLU/CLU_20190708_marshalFormat.csv'
     name = 'clu'
 
-    def __init__(self, load_data=False, constrain=True, use_a=True, use_distance=True, constrain_mass=True):
+    def __init__(self, load_data=False, constrain=True, use_a=False, use_distance=True, constrain_mass=True):
         super().__init__(ra=Column('ra', u.deg), dec=Column('dec', u.deg), use_distance=use_distance)
         self.cols.a = Column('a', u.arcmin)
         self.cols.b = Column('b', u.arcmin)
@@ -46,14 +46,14 @@ class Clu(Catalog):
                 if constrain_mass:
                     df = self.df.loc[
                         (self.df['mstar'].apply(np.log10) > 7) &
-                        (self.df['cluhamag'] < 14) &
+                        # (self.df['cluhamag'] > 12) &
                         (self.df['mstar'] <= 3e9) &
                         # (self.df['a'].isna())
                         (~self.df['sfr_fuv'].isna())
                     ]
                 else:
                     df = self.df.loc[
-                        (self.df['cluhamag'] < 14)
+                        (self.df['cluhamag'] > 12)
                     ]
             self.df = df
 

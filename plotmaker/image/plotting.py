@@ -60,7 +60,9 @@ def plot_panstarrs_filter(obj1, obj2,
                           d2d_obj1=None, d2d_obj2=None,
                           stretch=4,
                           filter='r',
-                          scalebar=False, extra_path=None, datasets=None, single=True):
+                          scalebar=False, by_name=False,
+                          extra_path=None, datasets=None, single=True,
+                          verbose=True, dpi=250):
     # PanSTARRS r filter fits most of CLU's 4 filters (H-alpha 656, 663, 672, 681)
 
     matched_obj1, matched_obj2 = get_matched(obj1, obj2, mask1, mask2)
@@ -73,12 +75,16 @@ def plot_panstarrs_filter(obj1, obj2,
         filename_obj1 = obj1.matches[obj2.name].images[i].filters[filter].file_location
         d, med, mad, _ = collect_statistics_cropped(filename_obj1, obj1, i, radius) if j in [768691, 1523864] else collect_statistics(filename_obj1)
         gc = aplpy.FITSFigure(d, figsize=(4,4))
-        gc.show_colorscale(vmin = med-15*mad,
-                           vmax = med+15*mad,
-                           interpolation = 'none',
+
+        sources = ['ILTJ090406.54+530314.6', 'ILTJ125944.53+275800.9']
+        not_in_sources = obj2.df.iloc[j]['Source_Name'] not in sources
+        gc.show_colorscale(vmin = med-15*mad if not_in_sources else med-5*mad,
+                           vmax = med+15*mad if not_in_sources else med+5*mad,
+                           interpolation = 'none' if not_in_sources else 'bicubic',
                            # kernel='gauss',
                            cmap = 'RdBu_r')
 
+        sigmas = [5,10,15] if not_in_sources else [3,5,10]
         gc.show_contour(d,
                         colors=['#cb181d',
                                 '#fb6a4a',
@@ -87,9 +93,9 @@ def plot_panstarrs_filter(obj1, obj2,
                                 r'$\mu+10\sigma$',
                                 r'$\mu+15\sigma$'],
                         alpha=0.5,
-                        levels=[med + 5*mad,
-                                med + 10*mad,
-                                med + 15*mad]
+                        levels=[med + s*mad for s in sigmas],
+                        show_levels=not_in_sources,
+                        levellabels=sigmas
                         )
 
         del d
@@ -100,34 +106,38 @@ def plot_panstarrs_filter(obj1, obj2,
         dd, dd_med, dd_mad, _  = collect_statistics(filename_obj2)
         bmaj, bmin, bpa = get_beam_info(filename_obj2)
 
+        sources = ['ILTJ023058.18+232412.6']
+        not_in_sources = obj2.df.iloc[j]['Source_Name'] not in sources
+        sigmas = [5,10,15] if not_in_sources else [1.5,3,5,10]
+        show_levels = False if not_in_sources else True
+        colors = ['#edf8b1',
+                  '#c7e9b4',
+                  '#ffffd9'] if not_in_sources else ['#DEF6CC',
+                                                     '#edf8b1',
+                                                     '#c7e9b4',
+                                                     '#ffffd9']
         gc.show_contour(dd,
-                        colors=['#edf8b1',
-                                '#c7e9b4',
-                                '#ffffd9'],
-                        labels=[r'$\mu+5\sigma$',
-                                r'$\mu+10\sigma$',
-                                r'$\mu+15\sigma$'],
+                        colors=colors,
+                        labels=[r'$\mu+{}\sigma$'.format(s) for s in sigmas],
                         alpha=0.75,
-                        levels=[dd_med + 5*dd_mad,
-                                dd_med + 10*dd_mad,
-                                dd_med + 15*dd_mad]
-                        )
-
+                        levels=[dd_med + s*dd_mad for s in sigmas],
+                        show_levels=show_levels,
+                        levellabels=sigmas)
         del dd
         # gc._ax1.legend()
 
-        # try:
-        #     gc.show_ellipses(row_obj1[obj1.cols.ra.label],
-        #                      row_obj1[obj1.cols.dec.label],
-        #                      width=obj1.semi_major(i, to_unit=u.deg) * 2,
-        #                      height=obj1.semi_minor(i, to_unit=u.deg) * 2,
-        #                      angle=-row_obj1[obj1.cols.pa.label],
-        #                      edgecolor=pink_rgb,
-        #                      linestyle='-',
-        #                      facecolor='none',
-        #                      zorder=100)
-        # except AttributeError:
-        #     pass
+        try:
+            gc.show_ellipses(row_obj1[obj1.cols.ra.label],
+                             row_obj1[obj1.cols.dec.label],
+                             width=obj1.semi_major(i, to_unit=u.deg) * 2,
+                             height=obj1.semi_minor(i, to_unit=u.deg) * 2,
+                             angle=-row_obj1[obj1.cols.pa.label],
+                             edgecolor='red',
+                             linestyle='-',
+                             facecolor='none',
+                             zorder=100)
+        except AttributeError:
+            pass
 
         gc.add_beam(major=bmaj, minor=bmin, angle=bpa)
         gc.beam.set_edgecolor('black')
@@ -201,7 +211,7 @@ def plot_panstarrs_filter(obj1, obj2,
                 _row = df_alpha.loc[df_alpha['lotss_id'] == j][['alpha', 'alpha_err']].values[0]
                 plt.annotate(
                     r"$\alpha=%.1f\pm%.2f$" % (_row[0], _row[1]),
-                    xy=(.3, 0.04) if not scalebar else (0.35, 0.9),
+                    xy=(.35, 0.04) if not scalebar else (0.35, 0.9),
                     xycoords='axes fraction',
                     color='white',
                     fontsize=16
@@ -210,16 +220,16 @@ def plot_panstarrs_filter(obj1, obj2,
                 pass
 
         # Check for multi-components
-        if row_obj2['S_Code'] == 'M':
-            df = load_fits_as_dataframe('../data/LoTSS/LoTSS_DR2_v110.gaus.fits')
-            for k, row in df.loc[df['Source_Name'] == row_obj2['Source_Name']].iterrows():
-                gc.show_markers(row[obj2.cols.ra.label],
-                                row[obj2.cols.dec.label],
-                                marker='o',
-                                alpha=0.75,
-                                zorder=1000,
-                                edgecolor='#edf8b1',
-                                facecolor='#edf8b1')
+        # if row_obj2['S_Code'] == 'M':
+        #     df = load_fits_as_dataframe('../data/LoTSS/LoTSS_DR2_v110.gaus.fits')
+        #     for k, row in df.loc[df['Source_Name'] == row_obj2['Source_Name']].iterrows():
+        #         gc.show_markers(row[obj2.cols.ra.label],
+        #                         row[obj2.cols.dec.label],
+        #                         marker='o',
+        #                         alpha=0.75,
+        #                         zorder=1000,
+        #                         edgecolor='#edf8b1',
+        #                         facecolor='#edf8b1')
 
         #
         # gc.show_ellipses(row_obj2[obj2.cols.ra.label],
@@ -279,7 +289,8 @@ def plot_panstarrs_filter(obj1, obj2,
         #                              alpha=0.7,
         #                              facecolor='none')
 
-        gc.set_title(obj2.df.iloc[j][obj2.cols.radio.source_name.label])
+        source_name = obj2.df.iloc[j][obj2.cols.radio.source_name.label]
+        gc.set_title(source_name)
         # gc.set_title('LoTSS df id: %d' %j)
         # gc.set_title('LoTSS df id: {}, {}{}'.format(
         #     j,
@@ -306,7 +317,7 @@ def plot_panstarrs_filter(obj1, obj2,
         gc.tick_labels.hide()
         gc.axis_labels.hide()
 
-        if j in [2380117] or scalebar: #, 547033]:
+        if j in [2380117] or scalebar or source_name in ['ILTJ021835.45+262040.9', 'ILTJ125944.53+275800.9']: #, 547033]:
             gc.add_scalebar(6/60./60.)
             gc.scalebar.set_label('6"')
             gc.scalebar.set_font_size(20)
@@ -316,9 +327,10 @@ def plot_panstarrs_filter(obj1, obj2,
                                                 return_folder=True)
         # gc.save("%s/%s_%s.pdf" % (outpath, j, get_name(row_obj1[obj1.cols.ra.label],
         #                                                row_obj1[obj1.cols.dec.label])), dpi=250)
-        outfile = "%s/%s.png" % (outpath, j)
-        print ('Saving to {}'.format(outfile))
-        gc.save(outfile, dpi=250)
+        outfile = "%s/%s.png" % (outpath, j if not by_name else source_name)
+        if verbose:
+            print ('Saving to {}'.format(outfile))
+        gc.save(outfile, dpi=dpi)
         gc.close()
 
 def plot_obj1_img_obj2_contour(obj1, obj2,
