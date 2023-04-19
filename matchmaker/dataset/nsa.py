@@ -34,13 +34,15 @@ class Nsa(Catalog):
         with fits.open(self.file_location) as hdul:
             t = Table(hdul[1].data)
 
-        t['ABSMAG F'] = t['ABSMAG'][:,0]
-        t['ABSMAG N'] = t['ABSMAG'][:,1]
-        t['ABSMAG u'] = t['ABSMAG'][:,2]
-        t['ABSMAG g'] = t['ABSMAG'][:,3]
-        t['ABSMAG r'] = t['ABSMAG'][:,4]
-        t['ABSMAG i'] = t['ABSMAG'][:,5]
-        t['ABSMAG z'] = t['ABSMAG'][:,6]
+        for param in ['ABSMAG', 'SERSICFLUX']:
+            t[f'{param}_F'] = t[param][:,0]
+            t[f'{param}_N'] = t[param][:,1]
+            t[f'{param}_u'] = t[param][:,2]
+            t[f'{param}_g'] = t[param][:,3]
+            t[f'{param}_r'] = t[param][:,4]
+            t[f'{param}_i'] = t[param][:,5]
+            t[f'{param}_z'] = t[param][:,6]
+
         t.remove_columns(['NMGY', 'NMGY_IVAR', 'RNMGY', 'ABSMAG', 'AMIVAR', 'EXTINCTION', 'KCORRECT', 'KCOEFF', 'MTOL',
                           'NPROF', 'PROFMEAN', 'PROFMEAN_IVAR', 'QSTOKES', 'USTOKES', 'BASTOKES', 'PHISTOKES',
                           'PETROFLUX', 'PETROFLUX_IVAR', 'FIBERFLUX', 'FIBERFLUX_IVAR', 'SERSICFLUX', 'SERSICFLUX_IVAR',
@@ -91,13 +93,13 @@ class Nsa(Catalog):
         self.cols.all.nmgy_ivar7 = Column('NMGY_IVAR','nanomaggies-2','Inverse variances used for K-correction in FNugriz (includes error floors)')
         self.cols.all.ok = Column('OK', None,"'1 if K-correction was performed, 0 if not (should all be 1)'")
         self.cols.all.rnmgy7 = Column('RNMGY','nanomaggies','Reconstructed AB nanomaggies from K-correction fit')
-        self.cols.all.absmag_f = Column('ABSMAG F', u.mag,"'Absolute magnitude estimates for F from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
-        self.cols.all.absmag_n = Column('ABSMAG N', u.mag,"'Absolute magnitude estimates for N from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
-        self.cols.all.absmag_u = Column('ABSMAG u', u.mag,"'Absolute magnitude estimates for u from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
-        self.cols.all.absmag_g = Column('ABSMAG g', u.mag,"'Absolute magnitude estimates for g from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
-        self.cols.all.absmag_r = Column('ABSMAG r', u.mag,"'Absolute magnitude estimates for r from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
-        self.cols.all.absmag_i = Column('ABSMAG i', u.mag,"'Absolute magnitude estimates for i from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
-        self.cols.all.absmag_z = Column('ABSMAG z', u.mag,"'Absolute magnitude estimates for z from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
+        self.cols.all.absmag_f = Column('ABSMAG_F', u.mag,"'Absolute magnitude estimates for F from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
+        self.cols.all.absmag_n = Column('ABSMAG_N', u.mag,"'Absolute magnitude estimates for N from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
+        self.cols.all.absmag_u = Column('ABSMAG_u', u.mag,"'Absolute magnitude estimates for u from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
+        self.cols.all.absmag_g = Column('ABSMAG_g', u.mag,"'Absolute magnitude estimates for g from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
+        self.cols.all.absmag_r = Column('ABSMAG_r', u.mag,"'Absolute magnitude estimates for r from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
+        self.cols.all.absmag_i = Column('ABSMAG_i', u.mag,"'Absolute magnitude estimates for i from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
+        self.cols.all.absmag_z = Column('ABSMAG_z', u.mag,"'Absolute magnitude estimates for z from K-corrections (Ωm=0.3, ΩΛ=0.7, h=1)'")
         self.cols.all.amivar7 = Column('AMIVAR', u.mag**-2,'Inverse variance on absolute magnitudes in FNugriz')
         self.cols.all.extinction7 = Column('EXTINCTION', u.mag,"'Galactic extinction in FNugriz from Schlegel, Finkbeiner & Davis (1997)'")
         self.cols.all.kcorrect7 = Column('KCORRECT', u.mag,'K-corrections used for absolute magnitudes in FNugriz')
@@ -124,7 +126,13 @@ class Nsa(Catalog):
         self.cols.all.phi50 = Column('PHI50', u.deg,'Angle (E of N) from Stokes parameters at 50% light radius')
         self.cols.all.ba90 = Column('BA90', None,'Axis ratio b/a from Stokes parameters at 90% light radius')
         self.cols.all.phi90 = Column('PHI90', u.deg,'Angle (E of N) from Stokes parameters at 90% light radius')
-        self.cols.all.sersicflux7 = Column('SERSICFLUX','nanomaggies','2D Sersic fit flux in FNugriz (GALEX-SDSS photometric systems)')
+        self.cols.all.sersicflux_f = Column('SERSICFLUX_F','nanomaggies','2D Sersic fit flux for F (FNugriz) (GALEX-SDSS photometric systems)')
+        self.cols.all.sersicflux_n = Column('SERSICFLUX_N','nanomaggies','2D Sersic fit flux for N (FNugriz) (GALEX-SDSS photometric systems)')
+        self.cols.all.sersicflux_u = Column('SERSICFLUX_u','nanomaggies','2D Sersic fit flux for u (FNugriz) (GALEX-SDSS photometric systems)')
+        self.cols.all.sersicflux_g = Column('SERSICFLUX_g','nanomaggies','2D Sersic fit flux for g (FNugriz) (GALEX-SDSS photometric systems)')
+        self.cols.all.sersicflux_r = Column('SERSICFLUX_r','nanomaggies','2D Sersic fit flux for r (FNugriz) (GALEX-SDSS photometric systems)')
+        self.cols.all.sersicflux_i = Column('SERSICFLUX_i','nanomaggies','2D Sersic fit flux for i (FNugriz) (GALEX-SDSS photometric systems)')
+        self.cols.all.sersicflux_z = Column('SERSICFLUX_z','nanomaggies','2D Sersic fit flux for z (FNugriz) (GALEX-SDSS photometric systems)')
         self.cols.all.sersicflux_ivar7 = Column('SERSICFLUX_IVAR','nanomaggies-2','Inverse variance of SERSICFLUX')
         self.cols.all.sersic_n = Column('SERSIC_N', None,'2D Sersic index from fit')
         self.cols.all.sersic_ba = Column('SERSIC_BA', None,'Axis ratio b/a from 2D Sersic fit')

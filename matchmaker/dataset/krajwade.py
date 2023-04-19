@@ -10,11 +10,12 @@ from ..model.wise import is_AGN
 
 # Could possibly simply overload the Lotss class as it's almost all the same fields
 class Krajwade(Catalog):
-    file_location = DATA_BASE_PATH + 'data/krajwade/GalField1-MFS-image.pybdsm.srl.fits'
+    file_folder = DATA_BASE_PATH + 'data/krajwade/'
+    file_location = file_folder + 'GalField1-MFS-image.pybdsm.srl.fits'
     name = 'krajwade'
     boxes = None
 
-    def __init__(self, load_data=True, constrain=False, smin=None, single_only=False):
+    def __init__(self, load_data=True, constrain=False, smin=None, single_only=False, input_filename=None):
         # Required and practical columns
         super().__init__(ra=Column('RA', u.deg), dec=Column('DEC', u.deg))
         self.cols.ra_err = Column('E_RA', u.arcsec)
@@ -41,6 +42,9 @@ class Krajwade(Catalog):
 
         self.cols.measure.peak_flux = self.cols.radio.peak_flux
         self.cols.measure.peak_flux_err = self.cols.radio.e_peak_flux
+
+        if input_filename is not None:
+            self.file_location = self.file_folder + input_filename
 
         if load_data:
             self.load_data(constrain=constrain, smin=smin, single_only=single_only)

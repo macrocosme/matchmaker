@@ -184,6 +184,8 @@ def plot_panstarrs_filter(obj1, obj2,
         #                  edgecolor='#edf8b1',
         #                  facecolor='#edf8b1')
 
+        source_name = obj2.df.iloc[j][obj2.cols.radio.source_name.label]
+
         if datasets is not None:
             # Check for SDSS localisation
             # try:
@@ -191,6 +193,7 @@ def plot_panstarrs_filter(obj1, obj2,
             try:
                 _row = df_sdss.loc[df_sdss['lotss_id'] == j][['ra', 'dec']].values[0]
                 fiber_size = 2 if j in [1420050, 510897] else 3
+                fiber_size = 2 if source_name in ['ILTJ163850.81+352901.0', 'ILTJ091333.83+300056.9'] else 3
                 gc.show_ellipses(_row[0],
                                  _row[1],
                                  width=(fiber_size*u.arcsec).to(u.deg),
@@ -288,7 +291,6 @@ def plot_panstarrs_filter(obj1, obj2,
         #                              alpha=0.7,
         #                              facecolor='none')
 
-        source_name = obj2.df.iloc[j][obj2.cols.radio.source_name.label]
         gc.set_title(source_name)
         # gc.set_title('LoTSS df id: %d' %j)
         # gc.set_title('LoTSS df id: {}, {}{}'.format(

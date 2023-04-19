@@ -2,10 +2,26 @@ import math
 import numpy as np
 import pandas as pd
 import astropy.units as u
-from astropy.cosmology import FlatLambdaCDM
+from astropy.cosmology import FlatLambdaCDM #, WMAP9 as cosmo
 
 luminosity_radio = lambda flux, lum_dist, z, alpha=-0.7: (flux * 4 * math.pi * lum_dist**2) / (1+z)**(1+alpha)
 
+def powerlaw_scale(freq1, freq2, input1, alpha):
+    '''flux at freq2 from powerlaw index alpha and flux1 at freq1
+
+    Parameters
+    ----------
+    freq1:float
+    freq2:float
+    input1:float
+        Can be flux, luminosity, etc.
+    alpha:float
+
+    Returns
+    -------
+    scaled_flux2:float
+    '''
+    return input1 * (freq2/freq1)**alpha
 
 def w_hz_to_erg_s_hz(x):
     return (x * (u.W * u.Hz**-1)).to(u.erg * u.s**-1 * u.Hz**-1).value
@@ -19,7 +35,8 @@ def luminosity_distance_series(redshifts:pd.Series,
                                fluxes:pd.Series,
                                output_units='W_Hz',
                                alpha=-0.7,
-                               cosmo=FlatLambdaCDM(H0=70, Om0=0.3)):
+                               cosmo=FlatLambdaCDM(H0=70, Om0=0.3)
+                               ):
     # Possibly deprecated. TBC.
     print (redshifts)
     print (fluxes)
@@ -43,6 +60,13 @@ def luminosity_distance_series(redshifts:pd.Series,
                 ).to(u.erg * u.s**-1 * u.Hz**-1).value for f, z in zip(fluxes, redshifts)
             ]
         )
+
+def distance_atomic(redshift:float,
+                    output_unit='Mpc',
+                    cosmo=FlatLambdaCDM(H0=70, Om0=0.3),
+                    with_unit=False):
+    return cosmo.luminosity_distance(redshift).to(output_unit) if with_unit \
+        else cosmo.luminosity_distance(redshift).to(output_unit).value
 
 def luminosity_distance_atomic(redshift:float,
                                flux:float,

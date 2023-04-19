@@ -139,6 +139,17 @@ class Catalog:
                                            sep2d=sep2d,
                                            sep3d=sep3d)
 
+    def get_mask_to_third_catalog(self, cat1, cat2):
+        def to_array(cat1, cat2):
+            return np.array([
+                np.where(i == self.matches[cat1].mask_filtered[f'{cat2}_{self.name}'])[0][0] if \
+                np.where(i == self.matches[cat1].mask_filtered[f'{cat2}_{self.name}'])[0].size > 0 else \
+                False \
+                for i in self.matches[cat1].mask_filtered[self.name]
+            ])
+
+        return to_array(cat1, cat2)[np.where(to_array(cat1, cat2))[0]]
+
     def load_data(self):
         pass
 

@@ -4,9 +4,8 @@ import pandas as pd
 
 from . import (Catalog, Column, DATA_BASE_PATH)
 from ..utils import load_fits_as_dataframe, load, get_matched
-from ..measures import luminosity_distance as _luminosity_distance
+from ..measures import distance_atomic, luminosity_distance as _luminosity_distance, powerlaw_scale
 from ..model.lofar import power_law, sigma as lum_sfr_sigma
-from ..model.wise import is_AGN
 
 class Lotss(Catalog):
     file_location = DATA_BASE_PATH + 'data/LoTSS/LoTSS_DR2_v110_masked.srl.fits'
@@ -58,7 +57,10 @@ class Lotss(Catalog):
 
             if compact_only:
                 self.df['compact'] = self.r99_sigmoid(return_indices=False)
-                const &= (self.df['compact'] == True)
+                try:
+                    const &= (self.df['compact'] == True)
+                except UnboundLocalError:
+                    const = (self.df['compact'] == True)
 
             if single_only:
                 try:
@@ -103,13 +105,17 @@ class Lotss(Catalog):
     
     def set_distance(self, source:Catalog):
         # Add distance columns information
-        self.cols.distance = source.cols.distance
+
         self.cols.z = source.cols.z
+        self.cols.distance = source.cols.distance
 
         # Add distances as new dataframe column
         lotss_dist = np.empty(len(self.df))
         mask_idx = source.matches[self.name].mask_idx
         filtered_idx = self.matches[source.name].filtered_idx
+
+        distance_atomic(source.df.iloc[mask_idx][source.cols.z.label].values)
+
         lotss_dist[filtered_idx] = source.df.iloc[mask_idx][source.cols.distance.label].values
         self.df[self.cols.distance.label] = lotss_dist
         lotss_dist[filtered_idx] = source.df.iloc[mask_idx][source.cols.z.label].values
@@ -122,7 +128,7 @@ class Lotss(Catalog):
         # self.cols.separation = Column('separation3d-{}'.format(source.name), u.kpc)
         # self.df[self.cols.separation.label] = lotss_dist
 
-    def luminosity_distance(self, mask=None, output_units='W_Hz', with_unit=False, with_error=False):
+    def luminosity_distance(self, mask=None, output_units='W_Hz', with_unit=False, with_error=False, log=False):
         df = self.df if mask is None else self.df.iloc[mask]
         l = _luminosity_distance(
                 df[self.cols.z.label],
@@ -148,15 +154,30 @@ class Lotss(Catalog):
                 output_units=output_units,
                 with_unit=with_unit
             )
-            return l, l_err_low, l_err_high
+            if not log:
+                return l, l_err_low, l_err_high
+            else:
+                return np.log10(l), np.log10(l_err_low), np.log10(l_err_high)
 
-    def radio_loudness(self, obj1, mask_lotss=None, mask1=None, verbose=False):
+    def radio_loudness(self, obj1, mask_lotss=None, mask1=None, alphas=None, verbose=False):
         matched_obj1, matched_obj2 = get_matched(obj1, self, mask1=mask1, mask2=mask_lotss)
         S = matched_obj2[self.cols.measure.total_flux.label]
         try:
             flux = (S.values * self.cols.measure.total_flux.unit).to(u.Jy).value
+            if alphas is not None: #This probably wont work for series -- to be done later. for now, loop.
+                scaled_flux = powerlaw_scale(self.central_frequency.to(u.GHz),
+                                             1.4 * u.GHz,
+                                             flux,
+                                             alphas)
+                flux = scaled_flux
         except AttributeError:
             flux = (S * self.cols.measure.total_flux.unit).to(u.Jy).value
+            scaled_flux = powerlaw_scale(self.central_frequency.to(u.GHz),
+                                         1.4 * u.GHz,
+                                         flux,
+                                         -0.7 if np.isnan(alphas) or alphas is None else alphas)
+            flux = scaled_flux
+
         m = -2.5 * np.log10(flux/(3631 * u.Jy).value) # Should be double checked to scale from 1.4 GHz to 144 MHz
 
         try:

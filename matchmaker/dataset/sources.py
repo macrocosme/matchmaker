@@ -3,6 +3,11 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 from . import DATA_BASE_PATH
 
+pink = (230/255, 29/255, 95/255, 1)
+pink_translucid = (230/255, 29/255, 95/255, .2)
+blue = (47/255, 161/255, 214/255, 0.2)
+blue_full = (47/255, 161/255, 214/255, 1)
+
 # def frb121102_wise_image_files():
 #     wise_bands = ['w1', 'w2', 'w3', 'w4']
 #     frb121102_wise_files = {
@@ -28,15 +33,19 @@ frb121102 = {
         'lum' : 2e29 * (u.erg * u.s**-1 * u.Hz**-1).to(u.W * u.Hz**-1),  # Law Connor Aggarwal 2021 (1.4 GHz)
         'flux': 180 * u.uJy, # Chatterjee+ 2017
         'z_host': 0.32,
-        'Msun' : 1e8,  # Bassa+ 2017
-        'sfr' : 0.8,  # Tendulkar 2017 quotes  0.4 solarmass per year
-        'alpha' : -0.27, # Marcote et al (2017) -- EVN   (Spectral index)
-        'alpha_err': 0.24, # Marcote et al (2017) -- EVN
-        'color' : 'purple',
+        'Msun' : 1.3e8,  # Bassa+ 2017
+        'mstar_err': 0.4e8, # Bassa+ 2017
+        'sfr' : 0.4,  # Tendulkar 2017 quotes  0.4 solarmass per year
+        'sfr_err': 0.17,
+        # 'alpha' : -0.27, # Marcote et al (2017) -- EVN   (Spectral index)
+        # 'alpha_err': 0.24, # Marcote et al (2017) -- EVN
+        'alpha': -0.07, # Resmi+ (2021)
+        'alpha_err': 0.03, # Resmi+ (2021)
+        'color' : pink,
         's' : 100,
         'zorder': 90,
         'name': 'FRB 20121102A',
-        'label': 'FRB 20121102A (10 GHz)',
+        'label': 'FRB 20121102A',
     }
 
 df_frb190520b_wise = pd.read_csv(DATA_BASE_PATH + 'data/FRB_WISE_Files/FRB20190520B_WISE.csv')
@@ -55,14 +64,16 @@ frb190520b = {
     'z_host': 0.241,
     'z_host_err': 0.001,
     'Msun': 6e8,  # From Niu+ 2022
+    'mstar_err': 0,
     'sfr': 0.41, # From Niu+ 2022
+    'sfr_err': 0., # From Niu+ 2022
     'alpha': -0.41, # From Zhao & Wang 2021
     'alpha_err': 0.04, # From Zhao & Wang 2021
-    'color' : 'red',
+    'color' : blue_full,
     's' : 100,
     'zorder': 90,
     'name': 'FRB 20190520B',
-    'label': 'FRB 20190520B (3 GHz)'
+    'label': 'FRB 20190520B'
 }
 
 SGR1935_2154 = {

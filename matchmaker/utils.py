@@ -13,6 +13,7 @@ sort_dict_by_value = lambda x, reverse=False: dict(sorted(x.items(),
 share_items = lambda a, b: not set(a).isdisjoint(b)
 intersection = lambda a, b: np.sort(list(set(a).intersection(b)))
 difference = lambda a, b: np.sort(list(set(a).difference(b)))
+union = lambda a, b: np.sort(list(set(a).union(b)))
 
 # Functions
 def check_underscore(string):

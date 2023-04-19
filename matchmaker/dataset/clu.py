@@ -8,7 +8,7 @@ class Clu(Catalog):
     file_location = DATA_BASE_PATH + 'data/CLU/CLU_20190708_marshalFormat.csv'
     name = 'clu'
 
-    def __init__(self, load_data=False, constrain=True, use_a=False, use_distance=True, constrain_mass=True):
+    def __init__(self, load_data=False, constrain=True, use_a=False, use_distance=True, constrain_mass=True, constrain_sfr=True):
         super().__init__(ra=Column('ra', u.deg), dec=Column('dec', u.deg), use_distance=use_distance)
         self.cols.a = Column('a', u.arcmin)
         self.cols.b = Column('b', u.arcmin)
@@ -25,13 +25,13 @@ class Clu(Catalog):
         self.area_dr2 = (4178 * u.deg**2) + (1457 * u.deg**2)
 
         if load_data:
-            self.load_data(constrain=constrain, use_a=use_a, constrain_mass=constrain_mass)
+            self.load_data(constrain=constrain, use_a=use_a, constrain_mass=constrain_mass, constrain_sfr=constrain_sfr)
 
     @property
     def n_source(self):
         return len(self.df)
 
-    def load_data(self, constrain=False, constrain_mass=True, use_a=True):
+    def load_data(self, constrain=False, constrain_mass=True, constrain_sfr=True, use_a=True):
         df = pd.read_csv(self.file_location)
         self.df = df
         if constrain:
@@ -44,17 +44,13 @@ class Clu(Catalog):
                 ]
             else:
                 if constrain_mass:
-                    df = self.df.loc[
-                        (self.df['mstar'].apply(np.log10) > 7) &
-                        # (self.df['cluhamag'] > 12) &
-                        (self.df['mstar'] <= 3e9) &
-                        # (self.df['a'].isna())
-                        (~self.df['sfr_fuv'].isna())
-                    ]
-                else:
-                    df = self.df.loc[
-                        (self.df['cluhamag'] > 12)
-                    ]
+                    const = (self.df['mstar'].apply(np.log10) > 7) & (self.df['mstar'] <= 3e9)
+                if constrain_sfr:
+                    try:
+                        const &= (~self.df['sfr_fuv'].isna())
+                    except:
+                        const = (~self.df['sfr_fuv'].isna())
+                df = self.df.loc[const]
             self.df = df
 
     def semi_major(self, mask=None, with_unit=False, to_unit=None):
@@ -99,7 +95,7 @@ class Clu(Catalog):
         w1w2 = df['w1mpro'] - df['w2mpro']
         w2w3 = df['w2mpro'] - df['w3mpro']
 
-        if type(w2w3) in [np.float, np.float32, np.float64]:
+        if type(w2w3) in [float, np.float32, np.float64]:
             return ~Path(wise.AGN_color_color_box).contains_point([w2w3, w1w2])
         else:
             return ~Path(wise.AGN_color_color_box).contains_points(np.array([w2w3, w1w2]).T)
@@ -220,6 +216,7 @@ class Clu(Catalog):
         self.cols.measure.zerr = Column('zerr', None, "Redshift uncertainty")
         self.cols.measure.distmpc = Column('distmpc', u.Mpc, "distance in Mpc (This will be populated using the 'dm' column)")
         self.cols.measure.sfr_fuv = Column('sfr_fuv', u.Msun * u.yr**-1, "star formation rate from GALEX FUV fluxes corrected for internal dust extinction via WISE, 22um (u.Msun * u.yr**-1)")
+        self.cols.measure.sfr_fuverr = Column('sfr_fuverr', u.Msun * u.yr**-1, "star formation rate uncertainty from GALEX FUV fluxes corrected for internal dust extinction via WISE, 22um (u.Msun * u.yr**-1)")
         self.cols.measure.sfr_ha = Column('sfr_ha', u.Msun * u.yr**-1, "star formation rate from CLU-Ha fluxes corrected for internal dust extinction via WISE 22um, (u.Msun * u.yr**-1)")
         self.cols.measure.mstar = Column('mstar', u.Msun, "Stellar Mass (Msun)")
         self.cols.measure.mstar_err = Column('mstarerr', u.Msun, "Stellar Mass uncertainty (Msun)")

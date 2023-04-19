@@ -6,7 +6,7 @@ from . import (Catalog, Column, DATA_BASE_PATH)
 from ..model import wise
 
 class Wise(Catalog):
-    file_location = DATA_BASE_PATH + 'data/wise/allwise.fits'
+    file_location = DATA_BASE_PATH + 'data/krajwade/allwise-GalField3.fits'
     name = 'wise'
 
     def __init__(self, load_data=False, constrain=True, use_distance=False):
@@ -30,7 +30,7 @@ class Wise(Catalog):
 
     def load_data(self, constrain=False):
         df = load_fits_as_dataframe(self.file_location)
-        df.drop(['recno'], axis=1, inplace=True)
+        # df.drop(['recno'], axis=1, inplace=True)
         self.df = df
 
     def non_agn_mask(self, mask=None, invert_logic=False):
