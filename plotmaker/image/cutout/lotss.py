@@ -4,9 +4,7 @@ from ....matchmaker.dataset import Image
 import astropy.units as u
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy.coordinates import SkyCoord as SkyCoord
 import numpy as np
-import pandas as pd
 
 # Example use to get cutout from coord:
 # python radio_cutout_matchmaker.py 9.59220833333 32.63822222222 P010+34 652 0.038412;

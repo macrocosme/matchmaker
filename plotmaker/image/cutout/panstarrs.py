@@ -8,8 +8,7 @@ from ..utils import set_image_radii
 from ....matchmaker.utils import (
     check_folder_exists_or_create,
     remove_file_if_exists,
-    remove_file_from_folder,
-    get_matched
+    remove_file_from_folder
 )
 from ....matchmaker.dataset import Image, Column
 
@@ -27,8 +26,7 @@ def download_images(obj1, obj2, mask1=None, mask2=None,
                     stretch=16,
                     base_url = 'http://ps1images.stsci.edu/cgi-bin',
                     output_path='data/panstarrs/',
-                    only_missing=False,
-                    check_files_are_in=False):
+                    only_missing=False):
 
     matched_obj1 = obj1.df.iloc[mask1] if mask1 is not None else obj1.df
 
@@ -45,7 +43,6 @@ def download_images(obj1, obj2, mask1=None, mask2=None,
             download = True
 
         if download:
-            # try:
             ra = obj1_row[obj1.cols.ra.label]
             dec = obj1_row[obj1.cols.dec.label]
 
@@ -70,19 +67,7 @@ def download_images(obj1, obj2, mask1=None, mask2=None,
                                                             "wcs=true&" \
                                                             "format=fits&" \
                                                             "size={}".format(base_url, ra, dec, red, size)
-                    # try:
-                    #     remove_file_if_exists(image.filters[filter].file_location)
-                    # except AttributeError:
-                    #     pass
-                    #     # if check_files_are_in:
-                    #     #     image.filters[filter].file_location = wget.download(
-                    #     #         remove_file_if_exists(image.filters[filter].remote_download, return_filename=True),
-                    #     #         out=output_path
-                    #     #     )
-                    #     # else:
-                    #     #     pass
 
-                    # if not check_files_are_in:
                     image.filters[filter].file_location = wget.download(
                         remove_file_if_exists(image.filters[filter].remote_download, return_filename=True),
                         out="{}{}.fits".format(output_path, i)
@@ -92,6 +77,4 @@ def download_images(obj1, obj2, mask1=None, mask2=None,
                 if i in obj1.matches[obj2.name].missing_images:
                     del obj1.matches[obj2.name].missing_images[np.where(obj1.matches[obj2.name].missing_images == i)[0][0]]
 
-            # except: # TODO: except too general: should be only when download failed
-            #     obj1.matches[obj2.name].missing_images.append(i)
 
