@@ -32,11 +32,6 @@ def fit_linear_a_only(x, y, theta):
 # Rayleigh
 rayleigh = lambda x, sigma: (x/sigma**2) * np.exp(-(x**2 / (2*sigma**2)))
 def fit_rayleigh(x, y, theta=None):
-    # lmfit:
-    # rmodel = Model(rayleigh)
-    # params = rmodel.make_params(sigma=10)
-    # out = rmodel.fit(y[:40]-np.min(y), params, x=x[:40])
-    # _y = y * rayleigh(x, out.params['sigma'].value)
     sigma_fit,cov=curve_fit(rayleigh, x if theta is None else x[:theta], y if theta is None else y[:theta])
 
     return sigma_fit[0]

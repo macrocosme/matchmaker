@@ -3,9 +3,6 @@ import pandas as pd
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 
-from .dataset import Match
-
-
 class Ellipse:
     def __init__(self, x, y, a, b, pa):
         self.x = x
@@ -99,9 +96,6 @@ def crossmatch(obj1, obj2,
         _ra_err = 0.
         _dec_err = 0.
 
-    # _ra_err = obj2.df[obj2.cols.ra_err.label].values/3600
-    # _dec_err = obj2.df[obj2.cols.dec_err.label].values/3600
-
     # Astropy based first cross-match on coordinates and position error
     # TODO: check for parallelization
     for ra_err, dec_err in ((2,1), (0,1), (1,1),
@@ -157,11 +151,6 @@ def crossmatch(obj1, obj2,
         dec[np.where(dec > 90)[0]] = -(dec[np.where(dec > 90)[0]] - 90)
         dec[np.where(dec < -90)[0]] = -(dec[np.where(dec < -90)[0]] + 90)
         dec = dec * unit
-
-        # if np.where(dec.value > 90)[0]:
-        #     dec.value = -(dec.value - 90)
-        # elif dec.value < -90:
-        #     dec.value = -(dec.value + 90)
         try:
             target_coords = SkyCoord(ra=ra, dec=dec)
         except ValueError:

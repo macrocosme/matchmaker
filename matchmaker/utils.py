@@ -130,30 +130,6 @@ def check_strictly_positive(v):
     else:
         return v
 
-def load_dataset_by_name(to_be_loaded=['lotss_dr2', 'reines', 'psrcat']):
-    #assert t in ['lotss_dr1', 'lotss_dr2', 'lotass', 'sanidas', 'reines', 'clu_dwarfs', 'chime', 'psrcat']
-
-    dfs = {}
-    for dataset in to_be_loaded:
-        if dataset == 'lotss_dr2':
-            df_lotss_dr2 = load_fits_as_dataframe('data/LoTSS/LoTSS_DR2_v100.srl.fits')
-            dfs[dataset] = df_lotss_dr2
-
-        if dataset == 'clu_dwarfs':
-            df_clu = pd.read_csv('data/CLU/CLU_20190708_marshalFormat.csv')
-            df_clu_dwarfs = df_clu.loc[
-            #     (df_clu['mstar'].apply(np.log10) > 7) &
-                (df_clu['mstar'] <= 3e9)
-            #     (df_clu['cluhamag'] < 14)
-            ]
-            dfs[dataset] = df_clu_dwarfs
-
-        if dataset == 'chime':
-            df_chime = pd.read_csv('data/chimefrbcat1.csv')
-            dfs[dataset] = df_chime
-
-    return dfs
-
 def get_matched(obj1, obj2, mask1=None, mask2=None):
     if mask1 is not None and mask2 is not None:
         matched_obj1 = obj1.df.iloc[mask1]
