@@ -8,11 +8,11 @@ from ..measures import distance_atomic, luminosity_distance as _luminosity_dista
 from ..model.lofar import power_law, sigma as lum_sfr_sigma
 
 class Lotss(Catalog):
-    file_location = DATA_BASE_PATH + 'data/LoTSS/LoTSS_DR2_v110_masked.srl.fits'
+    file_location = DATA_BASE_PATH + 'lotss/LoTSS_DR2_v110_masked.srl.fits'
     name = 'lotss'
     boxes = None
 
-    field_file_location = DATA_BASE_PATH + 'data/LoTSS/obslist.csv'
+    field_file_location = DATA_BASE_PATH + 'lotss/obslist.csv'
 
     def __init__(self, load_data=True, constrain=False, smin=None, compact_only=False, single_only=False):
         # Required and practical columns

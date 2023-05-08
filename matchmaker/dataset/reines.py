@@ -4,7 +4,7 @@ import astropy.units as u
 from . import (Catalog, Column, DATA_BASE_PATH)
 
 class Reines(Catalog):
-    file_location = DATA_BASE_PATH + 'data/reines/Reines_table3.csv'
+    file_location = DATA_BASE_PATH + 'reines/Reines_table3.csv'
     name = 'reines'
 
     def __init__(self, load_data=False, constrain=True, use_a=True, use_distance=False):

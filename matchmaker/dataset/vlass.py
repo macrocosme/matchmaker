@@ -4,7 +4,7 @@ from . import (Catalog, Column, DATA_BASE_PATH)
 
 
 class Vlass(Catalog):
-    file_location = DATA_BASE_PATH + 'data/vlass/vlass_table1_v1_good_partial.csv'
+    file_location = DATA_BASE_PATH + 'vlass/vlass_table1_v1_good_partial.csv'
     name = 'vlass'
 
 
