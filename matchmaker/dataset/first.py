@@ -5,7 +5,7 @@ from ..utils import load_fits_as_dataframe
 
 
 class First(Catalog):
-    file_location = DATA_BASE_PATH + 'data/first/first_14dec17.fits'
+    file_location = DATA_BASE_PATH + 'first/first_14dec17.fits'
     name = 'first'
 
 

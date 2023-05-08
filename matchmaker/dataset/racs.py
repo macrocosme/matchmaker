@@ -9,7 +9,7 @@ from ..model.lofar import power_law, sigma as lum_sfr_sigma
 from ..model.wise import is_AGN
 
 class Racs(Catalog):
-    file_location = DATA_BASE_PATH + 'data/racs/racs.fits'
+    file_location = DATA_BASE_PATH + 'racs/racs.fits'
     name = 'racs'
     boxes = None
 

@@ -5,7 +5,7 @@ from ..utils import load_fits_as_dataframe
 
 
 class Nvss(Catalog):
-    file_location = DATA_BASE_PATH + 'data/NVSS/NVSS.fits'
+    file_location = DATA_BASE_PATH + 'nvss/NVSS.fits'
     name = 'nvss'
 
 

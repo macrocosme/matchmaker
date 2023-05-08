@@ -5,7 +5,7 @@ from . import (Catalog, Column, DATA_BASE_PATH)
 from ..model import wise
 
 class Clu(Catalog):
-    file_location = DATA_BASE_PATH + 'data/CLU/CLU_20190708_marshalFormat.csv'
+    file_location = DATA_BASE_PATH + 'clu/CLU_20190708_marshalFormat.csv'
     name = 'clu'
 
     def __init__(self, load_data=False, constrain=True, use_a=False, use_distance=True, constrain_mass=True, constrain_sfr=True):

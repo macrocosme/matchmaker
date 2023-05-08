@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 from astropy.coordinates import SkyCoord
 
-# todo: set BASEPATH somewhere else
-DATA_BASE_PATH = '/Users/vohl/Documents/code/EOSC/'
+#   
+#  Set DATA_BASE_PATH in accordance to the location of your datasets
+DATA_BASE_PATH = '../../data/'
 
 def box2d(obj, box_xxyy):
     df = obj.df.loc[
