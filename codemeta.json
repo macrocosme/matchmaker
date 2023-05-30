@@ -1,28 +1,45 @@
 {
     "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
     "@type": "SoftwareSourceCode",
-    "codeRepository": "https://gitlab.in2p3.fr/escape2020/virtual-environment/matchmaker",
-    "dateCreated": "2022-09-01",
-    "datePublished": "2023-05-01",
+    "license": "https://spdx.org/licenses/BSD-3-Clause",
+    "codeRepository": "git+https://gitlab.in2p3.fr/escape2020/virtual-environment/matchmaker.git",
+    "datePublished": "2023-05-09",
+    "dateModified": "2023-05-09",
     "name": "matchmaker",
-    "description": "matchmaker is a python package to perform cross-matching of (astronomical) catalogs and manipulate results. \n\n",
+    "version": "v1.0",
+    "description": "matchmaker is a python package to perform cross-matching of (astronomical) catalogs and manipulate results.",
     "applicationCategory": "Astronomy",
-    "funding": "EOSC-Future",
+    "readme": "https://gitlab.in2p3.fr/escape2020/virtual-environment/matchmaker",
+    "softwareVersion": "v1.0",
     "keywords": [
-        "python"
+        "Catalogs cross-matching"
     ],
     "programmingLanguage": [
-        "Python 3"
+        "Python"
     ],
     "author": [
         {
             "@type": "Person",
-            "givenName": "Dany Joseph Jean",
+            "@id": "http://orcid.org/0000-0003-1779-4532",
+            "givenName": "Dany",
             "familyName": "Vohl",
-            "email": "danyvohl@gmail.com",
+            "email": "d.vohl@uva.nl",
             "affiliation": {
                 "@type": "Organization",
-                "name": "Anton Pannekoek Institute for Astronomy, University of Amsterdam; ASTRON"
+                "name": "University of Amsterdam, ASTRON"
+            }
+        }
+    ],
+    "maintainer": [
+        {
+            "@type": "Person",
+            "@id": "http://orcid.org/0000-0003-1779-4532",
+            "givenName": "D.",
+            "familyName": "Vohl",
+            "email": "d.vohl@uva.nl",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "University of Amsterdam, ASTRON"
             }
         }
     ]
