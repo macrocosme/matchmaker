@@ -5,6 +5,21 @@ import astropy.units as u
 
 class Ellipse:
     def __init__(self, x, y, a, b, pa):
+        """Initialise an ellipse
+
+        Parameters
+        ----------
+        x:float
+            x coordinate
+        y:float
+            y coordinate
+        a:float
+            semi-major axis
+        b:float
+            semi-minor axis
+        pa:float
+            Position angle
+        """
         self.x = x
         self.y = y
         self.a = a  # semi-major axis
@@ -12,6 +27,19 @@ class Ellipse:
         self.pa = pa
 
     def is_point_inside(self, x, y):
+        """Check if point (x,y) is inside ellipse
+
+        Parameters
+        ----------
+            x:float
+                x coordinate
+            y:float
+                y coordinate
+
+        Returns
+        -------
+            True if (x,y) in ellipse else False
+        """
         cos_sin = (np.cos(self.pa) * (x-self.x) +
                    np.sin(self.pa) * (y-self.y))
         sin_cos = (np.sin(self.pa) * (x-self.x) +
@@ -47,14 +75,19 @@ class Ellipse:
     #     return np.linalg.inv(self.E)
 
 def crossmatch(obj1, obj2,
-               sep=0.5/60, unit_sep=u.arcmin, ellipse_filter=False,
+               sep=6, unit_sep=u.arcsec, ellipse_filter=False,
                mask1=None, mask2=None):
     """ Cross-matching Catalog 1 (source) to Catalog 2 (target)
 
     In addition to the two Catalog objects to be cross-matched,
-    the function can accept a separation threshold (default: 0.5 arcsec),
+    the function accepts a separation threshold (default: 6 arcsec),
     the separation unit (default: arcmin), whether to apply ellipse filter or not, and
     provide an index mask for obj1.
+
+    The ellipse filter currently requires information about semi-major and semi-minor axes.
+    TODO: make the ellipse filter usage less confusing... perhaps add options to choose the source by param or move this to a different function
+
+    Results are stored in the match dictionary of both obj1 and obj2. E.g. obj1.matches[obj2.name] or obj2.matches[obj1.name]
 
     Parameters
     ----------
@@ -72,13 +105,6 @@ def crossmatch(obj1, obj2,
         Index mask for obj1 collection (default: None)
     mask2:numpy.array
         Index mask for obj2 collection (default: None)
-
-    Returns
-    -------
-    _mask:numpy.array
-        Numpy array of index mask representing matched values in obj1 (e.g. obj1.df.iloc[_mask])
-    idx:numpy.array
-        Indices for matches in obj2 (e.g. obj2.df.iloc[idx[_mask]])
 
     """
     source_coords = obj1.as_SkyCoord(mask1)

@@ -24,9 +24,31 @@ def powerlaw_scale(freq1, freq2, input1, alpha):
     return input1 * (freq2/freq1)**alpha
 
 def w_hz_to_erg_s_hz(x):
+    """Watts per hertz to erg per second per hertz
+
+    Parameter
+    ---------
+    x:float
+
+    Returns
+    -------
+    x:astropy.units
+        x in unit of erg/s/Hz
+    """
     return (x * (u.W * u.Hz**-1)).to(u.erg * u.s**-1 * u.Hz**-1).value
 
 def erg_s_hz_to_w_hz(x):
+    """Erg per second per hertz to watts per hertz
+
+    Parameter
+    ---------
+    x:float
+
+    Returns
+    -------
+    x:astropy.units
+        x in unit of W/Hz
+    """
     return (x * (u.erg * u.s**-1 * u.Hz**-1)).to(u.W * u.Hz**-1).value
 
 # TODO: these has fixed units -- should be provided through params instead
@@ -37,6 +59,26 @@ def luminosity_distance_series(redshifts:pd.Series,
                                alpha=-0.7,
                                cosmo=FlatLambdaCDM(H0=70, Om0=0.3)
                                ):
+    """Compute luminosity distance for Pandas series
+
+    Parameters
+    ----------
+    redshifts:pandas.Series
+        Series of redshifts
+    fluxes:pandas.Series
+        Series of fluxes
+    output_units='W_Hz'
+        Output units
+    alpha=-0.7
+        Powerlaw index
+    cosmo=FlatLambdaCDM(H0=70, Om0=0.3)
+        Cosmology
+
+    Returns
+    -------
+    luminosities:numpy.array
+        Array of luminosities
+    """
     # Possibly deprecated. TBC.
     print (redshifts)
     print (fluxes)
@@ -108,6 +150,25 @@ def luminosity_distance(redshift,
                         output_units='W_Hz',
                         cosmo=FlatLambdaCDM(H0=70, Om0=0.3),
                         with_unit=False):
+    """Compute luminosity distance
+
+    Parameters
+    ----------
+    redshift
+        Series of redshifts
+    flux
+        Series of fluxes
+    alpha:float
+        Powerlaw index
+    output_units='W_Hz'
+        Output units
+    cosmo:astropy.cosmology
+        Cosmology, default: FlatLambdaCDM(H0=70, Om0=0.3)
+
+    Returns
+    -------
+    luminosity in shape/type of the input
+    """
     if type(redshift) not in [np.array, pd.Series]:
         return luminosity_distance_atomic(
             redshift=redshift,

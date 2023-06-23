@@ -1,3 +1,4 @@
+import astropy.units
 import numpy as np
 import astropy.units as u
 import pandas as pd
@@ -8,6 +9,8 @@ from ..measures import distance_atomic, luminosity_distance as _luminosity_dista
 from ..model.lofar import power_law, sigma as lum_sfr_sigma
 
 class Lotss(Catalog):
+    """Class describing LoTSS DR2"""
+
     file_location = DATA_BASE_PATH + 'lotss/LoTSS_DR2_v110_masked.srl.fits'
     name = 'lotss'
     boxes = None
@@ -32,6 +35,10 @@ class Lotss(Catalog):
         self.area_dr2 = (4178 * u.deg**2) + (1457 * u.deg**2)
         self.central_frequency = 144 * u.MHz
         self.frequency_band = None
+
+        self.hips_dir_high_res = 'https://lofar-surveys.org/public_hips/LoTSS_DR2_high_hips/'
+        self.hips_dir_high_res = 'https://lofar-surveys.org/public_hips/LoTSS_DR2_low_hips/'
+        self.hips_dir = self.hips_dir_high_res
 
         self.set_survey_specific_columns()
 
@@ -79,9 +86,28 @@ class Lotss(Catalog):
 
         # LOAD LOTSS FIELDS LIST
         self.fields = Column()
-        self.fields.df = pd.read_csv(self.field_file_location)
+        try:
+            self.fields.df = pd.read_csv(self.field_file_location)
+        except FileNotFoundError:
+            pass
 
     def semi_major(self, mask=None, with_unit=False, to_unit=None):
+        """Get semi-major axis
+
+        Parameters
+        ----------
+        mask:numpy.array    (optional)
+            Mask describing rows to be returned
+        with_unit:bool      (optional)
+            Return semi-minor axis with or without a unit (as a quantity)
+        to_unit:astropy.units.Unit
+            Unit in which the quantity should be returned (can be a conversion)
+
+        Returns
+        -------
+        semi_major
+            Type will depend on input parameters (float, quantity, array, or array of quantities)
+        """
         a = self.prop_to_unit('major', self.cols.major.unit, mask=mask, with_unit=with_unit) / 2
 
         if to_unit:
@@ -92,7 +118,23 @@ class Lotss(Catalog):
 
         return a
 
-    def semi_minor(self, mask=None, with_unit=False, to_unit=None):
+    def semi_minor(self, mask:np.array=None, with_unit:bool=False, to_unit:astropy.units.Unit=None):
+        """Get semi-minor axis
+
+        Parameters
+        ----------
+        mask:numpy.array    (optional)
+            Mask describing rows to be returned
+        with_unit:bool      (optional)
+            Return semi-minor axis with or without a unit (as a quantity)
+        to_unit:astropy.units.Unit
+            Unit in which the quantity should be returned (can be a conversion)
+
+        Returns
+        -------
+        semi_minor
+            Type will depend on input parameters (float, quantity, array, or array of quantities)
+        """
         b = self.prop_to_unit('minor', self.cols.minor.unit, mask=mask, with_unit=with_unit) / 2
 
         if to_unit:
@@ -104,6 +146,13 @@ class Lotss(Catalog):
         return b
     
     def set_distance(self, source:Catalog):
+        """Set z and distance columns from another source Catalog
+
+        Parameter
+        ---------
+
+
+        """
         # Add distance columns information
 
         self.cols.z = source.cols.z

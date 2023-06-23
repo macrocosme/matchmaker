@@ -16,7 +16,17 @@ difference = lambda a, b: np.sort(list(set(a).difference(b)))
 union = lambda a, b: np.sort(list(set(a).union(b)))
 
 # Functions
-def check_underscore(string):
+def check_underscore(string:str):
+    """Check if string ends with underscore, and if not, add one
+
+    Parameter
+    ---------
+    string:str
+
+    Returns
+    -------
+
+    """
     if string != '':
         if string[-1] != '_':
             string += '_'
@@ -45,7 +55,7 @@ def remove_file_if_exists(filename, return_filename=False):
         os.remove(filename)
     return filename
 
-def save(variable:str, data, protocol=pickle.HIGHEST_PROTOCOL, state_prefix='', folder='states/'):
+def save(variable:str, data, protocol=pickle.HIGHEST_PROTOCOL, state_prefix:str='', folder:str='states/'):
     check_folder_exists_or_create(folder)
 
     if state_prefix != '':
@@ -55,7 +65,13 @@ def save(variable:str, data, protocol=pickle.HIGHEST_PROTOCOL, state_prefix='', 
         with open(check_slash(folder) + variable + '.pickle', 'wb') as f:
             pickle.dump(data, f, protocol)
 
-def load(variable, state_prefix='', folder='states/'):
+def load(variable:str, state_prefix:str='', folder:str='states/'):
+    """Load (pickle) state file
+
+    Parameters
+    ----------
+    variable: str
+    """
     if state_prefix != '':
         if os.path.exists(folder + check_underscore(state_prefix) + variable + '.pickle'):
             with open(folder + check_underscore(state_prefix) + variable + '.pickle', 'rb') as f:
