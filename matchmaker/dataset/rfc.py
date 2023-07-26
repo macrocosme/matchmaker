@@ -85,7 +85,7 @@ class Rfc(Catalog):
             self.df = pd.DataFrame(
                 {'source_name': source_names,
                  'ivs_name': ivs_names,
-                 'categorie': categories,
+                 'category': categories,
                  'coordString': coordStrings,
                  'ra': ras,
                  'dec': decs,
