@@ -11,6 +11,9 @@ class Gsnr(Catalog):
 
         self.set_survey_specific_columns()
 
+        self.cols.ra = self.cols._RA_icrs
+        self.cols.dec = self.cols._DEC_icrs
+
         if load_data:
             self.load_data()
 
@@ -21,7 +24,6 @@ class Gsnr(Catalog):
     def load_data(self):
         df = load_fits_as_dataframe(self.file_location)
         self.df = df
-        self.n_source = len(self.df)
 
     def set_survey_specific_columns(self):
         self.cols.recno = Column('recno', None, '')
