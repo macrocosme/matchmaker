@@ -81,7 +81,7 @@ def download_images(obj1, obj2, mask1=None, mask2=None,
 
 def download_images_basic(obj1, obj2,
                     mask1=None,
-                    image_radii=16 * u.arcsec,
+                    image_radii=16*u.arcsec,
                     stretch=16,
                     base_url = 'http://ps1images.stsci.edu/cgi-bin',
                     output_path='data/panstarrs/',
@@ -105,7 +105,7 @@ def download_images_basic(obj1, obj2,
             ra = obj1_row[obj1.cols.ra.label]
             dec = obj1_row[obj1.cols.dec.label]
 
-            size = arcsec_to_pixel(image_radii)
+            size = arcsec_to_pixel(image_radii.value)
             check_folder_exists_or_create(output_path, return_folder=False)
 
             fname = wget.download("{}/ps1filenames.py?ra={:f}&dec={:f}".format(base_url, ra, dec),
