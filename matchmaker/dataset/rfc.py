@@ -11,7 +11,7 @@ class Rfc(Catalog):
     name = 'rfc'
     boxes = None
 
-    def __init__(self, load_data=True, minFlux=1.0):
+    def __init__(self, load_data=True):
         # Required and practical columns
         super().__init__(ra=Column('ra', u.deg), dec=Column('dec', u.deg))
 
@@ -20,9 +20,9 @@ class Rfc(Catalog):
         self.total_flux = self.cols.flux.unresolved_flux_S_band
 
         if load_data:
-            self.load_data(minFlux=minFlux)
+            self.load_data()
 
-    def load_data(self, minFlux=1.0):
+    def load_data(self):
         # Adapted from Benito Marcote's Seffers sources.py (https://github.com/bmarcote/seffers)
         with open(self.file_location, 'rt') as f:
             source_names = []
@@ -48,39 +48,39 @@ class Rfc(Catalog):
                 if not (line.startswith('#') or line.startswith('U')): # or line.startswith('N'):
                     cols = line.split()
                     cols[13:23] = [float(f) if '<' not in f else 0.0 for f in cols[13:23]]
-                    if cols[16] > minFlux:
-                        # Get individual values
-                        source_name = cols[2]
-                        ivs_name = cols[1]
-                        category = cols[0]
-                        coord = SkyCoord("{}h{}m{}s {}d{}m{}s".format(*cols[3:9]))
-                        ra_err = cols[9]
-                        dec_err = cols[10]
-                        resolved_flux_S, unresolved_flux_S = cols[13], cols[14]
-                        resolved_flux_C, unresolved_flux_C = cols[15], cols[16]
-                        resolved_flux_X, unresolved_flux_X = cols[17], cols[18]
-                        resolved_flux_U, unresolved_flux_U = cols[19], cols[20]
-                        resolved_flux_K, unresolved_flux_K = cols[21], cols[22]
 
-                        # Add to lists
-                        source_names.append(source_name)
-                        ivs_names.append(ivs_name)
-                        categories.append(category)
-                        coordStrings.append(coord)
-                        ras.append(coord.ra.deg)
-                        decs.append(coord.dec.deg)
-                        ra_errs.append(ra_err)
-                        dec_errs.append(dec_err)
-                        resolved_fluxes_S.append(resolved_flux_S)
-                        unresolved_fluxes_S.append(unresolved_flux_S)
-                        resolved_fluxes_C.append(resolved_flux_C)
-                        unresolved_fluxes_C.append(unresolved_flux_C)
-                        resolved_fluxes_X.append(resolved_flux_X)
-                        unresolved_fluxes_X.append(unresolved_flux_X)
-                        resolved_fluxes_U.append(resolved_flux_U)
-                        unresolved_fluxes_U.append(unresolved_flux_U)
-                        resolved_fluxes_K.append(resolved_flux_K)
-                        unresolved_fluxes_K.append(unresolved_flux_K)
+                    # Get individual values
+                    source_name = cols[2]
+                    ivs_name = cols[1]
+                    category = cols[0]
+                    coord = SkyCoord("{}h{}m{}s {}d{}m{}s".format(*cols[3:9]))
+                    ra_err = cols[9]
+                    dec_err = cols[10]
+                    resolved_flux_S, unresolved_flux_S = cols[13], cols[14]
+                    resolved_flux_C, unresolved_flux_C = cols[15], cols[16]
+                    resolved_flux_X, unresolved_flux_X = cols[17], cols[18]
+                    resolved_flux_U, unresolved_flux_U = cols[19], cols[20]
+                    resolved_flux_K, unresolved_flux_K = cols[21], cols[22]
+
+                    # Add to lists
+                    source_names.append(source_name)
+                    ivs_names.append(ivs_name)
+                    categories.append(category)
+                    coordStrings.append(coord)
+                    ras.append(coord.ra.deg)
+                    decs.append(coord.dec.deg)
+                    ra_errs.append(ra_err)
+                    dec_errs.append(dec_err)
+                    resolved_fluxes_S.append(resolved_flux_S)
+                    unresolved_fluxes_S.append(unresolved_flux_S)
+                    resolved_fluxes_C.append(resolved_flux_C)
+                    unresolved_fluxes_C.append(unresolved_flux_C)
+                    resolved_fluxes_X.append(resolved_flux_X)
+                    unresolved_fluxes_X.append(unresolved_flux_X)
+                    resolved_fluxes_U.append(resolved_flux_U)
+                    unresolved_fluxes_U.append(unresolved_flux_U)
+                    resolved_fluxes_K.append(resolved_flux_K)
+                    unresolved_fluxes_K.append(unresolved_flux_K)
 
             self.df = pd.DataFrame(
                 {'source_name': source_names,
