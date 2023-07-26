@@ -11,7 +11,7 @@ class Rfc(Catalog):
     name = 'rfc'
     boxes = None
 
-    def __init__(self, load_data=True):
+    def __init__(self, load_data=True, minFlux=1.0):
         # Required and practical columns
         super().__init__(ra=Column('ra', u.deg), dec=Column('dec', u.deg))
 
@@ -20,7 +20,7 @@ class Rfc(Catalog):
         self.total_flux = self.cols.flux.unresolved_flux_S_band
 
         if load_data:
-            self.load_data()
+            self.load_data(minFlux=minFlux)
 
     def load_data(self, minFlux=1.0):
         # Adapted from Benito Marcote's Seffers sources.py (https://github.com/bmarcote/seffers)
