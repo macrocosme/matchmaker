@@ -22,6 +22,21 @@ blue_full = (47/255, 161/255, 214/255, 1)
 blue_rgb = (47/255, 161/255, 214/255)
 
 def collect_statistics_cropped(filename, dataset, i, radius):
+    """
+    Collects statistics from a cropped region of an image.
+
+    Parameters:
+    - filename (str): The path to the FITS file containing the image.
+    - dataset (Dataset): The dataset object containing the image data.
+    - i (int): The index of the object in the dataset.
+    - radius (float): The radius of the cropped region in degrees.
+
+    Returns:
+    - d (HDUList): The FITS file object.
+    - med (float): The median value of the cropped region.
+    - mad (float): The median absolute deviation of the cropped region.
+    - min (float): The minimum value of the cropped region.
+    """
     d = fits.open(filename)
     data = d[0].data
     wcs = WCS(d[0].header)
@@ -44,6 +59,15 @@ def collect_statistics_cropped(filename, dataset, i, radius):
     return d, med, mad, min
 
 def collect_statistics(filename):
+    """
+    Collects statistics from a FITS file.
+
+    Parameters:
+        filename (str): The path to the FITS file.
+
+    Returns:
+        tuple: A tuple containing the FITS data object, median value, median absolute deviation, and minimum value.
+    """
     d = fits.open(filename)
     med = np.nanmedian(d[0].data)
     mad = np.nanmedian(np.absolute(d[0].data-med))
@@ -51,6 +75,15 @@ def collect_statistics(filename):
     return d, med, mad, min
 
 def get_beam_info(filename):
+    """
+    Retrieves the beam information from the FITS header of the given file.
+
+    Parameters:
+    filename (str): The path to the FITS file.
+
+    Returns:
+    tuple: A tuple containing the major axis (bmaj), minor axis (bmin), and position angle (bpa) of the beam.
+    """
     hh = fits.getheader(filename)
     bmaj, bmin, bpa = hh['BMAJ'], hh['BMIN'], hh['BPA']
     return bmaj, bmin, bpa
@@ -63,6 +96,29 @@ def plot_panstarrs_filter(obj1, obj2,
                           scalebar=False, by_name=False,
                           extra_path=None, datasets=None, single=True,
                           verbose=True, dpi=250):
+    """
+    Plots PanSTARRS filter for two objects.
+
+    Parameters:
+    - obj1: The first object.
+    - obj2: The second object.
+    - mask1: Optional mask for the first object.
+    - mask2: Optional mask for the second object.
+    - d2d_obj1: Optional d2d object for the first object.
+    - d2d_obj2: Optional d2d object for the second object.
+    - stretch: The stretch value for the image.
+    - filter: The filter to use for plotting.
+    - scalebar: Whether to show a scalebar on the plot.
+    - by_name: Whether to plot by object name.
+    - extra_path: Optional extra path for the plot.
+    - datasets: Optional datasets for additional information.
+    - single: Whether to plot a single object or multiple objects.
+    - verbose: Whether to print verbose output.
+    - dpi: The DPI (dots per inch) for the plot.
+
+    Returns:
+    - None
+    """
     # PanSTARRS r filter fits most of CLU's 4 filters (H-alpha 656, 663, 672, 681)
 
     matched_obj1, matched_obj2 = get_matched(obj1, obj2, mask1, mask2)

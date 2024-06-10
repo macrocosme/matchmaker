@@ -18,6 +18,20 @@ def chance_association(obj1:Catalog,
                        n_in_area=700,
                        area=1 * u.deg**2,
                        catalogue_name='lotss'):
+    """
+    Calculate the chance association for a given set of objects.
+
+    Parameters:
+    - obj1 (Catalog): The catalog object containing the objects.
+    - obj1_ids (np.ndarray): The array of object IDs.
+    - theta (astropy.units.Quantity): The angular separation threshold.
+    - n_in_area (int): The number of objects in the search area.
+    - area (astropy.units.Quantity): The search area.
+    - catalogue_name (str): The name of the catalogue.
+
+    Returns:
+    None
+    """
     total = obj1_ids.size
 
     expected = chance_association_probability(
@@ -34,6 +48,20 @@ def chance_association_ab(obj1:Catalog,
                           area=1 * u.deg**2,
                           catalogue_name='lotss',
                           verbose=False):
+    """
+    Calculate the chance association between objects in obj1 and a given catalog.
+
+    Parameters:
+    - obj1 (Catalog): The catalog containing the objects.
+    - obj1_ids (np.ndarray): The array of object IDs in obj1.
+    - n_in_area (int, optional): The number of objects in the area. Default is 700.
+    - area (Quantity, optional): The area of the region. Default is 1 square degree.
+    - catalogue_name (str, optional): The name of the catalog. Default is 'lotss'.
+    - verbose (bool, optional): Whether to print verbose output. Default is False.
+
+    Returns:
+    None
+    """
     expected = 0
     total = 0
 

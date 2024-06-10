@@ -5,6 +5,19 @@ import astropy.units as u
 
 class Ellipse:
     def __init__(self, x, y, a, b, pa):
+        """
+        Initialize a Crossmatch object.
+
+        Parameters:
+        x (float): The x-coordinate of the object.
+        y (float): The y-coordinate of the object.
+        a (float): The semi-major axis of the object.
+        b (float): The semi-minor axis of the object.
+        pa (float): The position angle of the object.
+
+        Returns:
+        None
+        """
         self.x = x
         self.y = y
         self.a = a  # semi-major axis
@@ -12,6 +25,16 @@ class Ellipse:
         self.pa = pa
 
     def is_point_inside(self, x, y):
+        """
+        Check if a given point (x, y) is inside the ellipse.
+
+        Parameters:
+        - x (float): The x-coordinate of the point.
+        - y (float): The y-coordinate of the point.
+
+        Returns:
+        - bool: True if the point is inside the ellipse, False otherwise.
+        """
         cos_sin = (np.cos(self.pa) * (x-self.x) +
                    np.sin(self.pa) * (y-self.y))
         sin_cos = (np.sin(self.pa) * (x-self.x) +

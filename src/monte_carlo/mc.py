@@ -137,19 +137,19 @@ def run_mc(state_prefix_input, state_prefix, theta, nsigma = 3, shift=10, base_f
     save('x1x2y1y2_{}'.format(theta), [np.array(x1), np.array(x2), np.array(y1), np.array(y2)], state_prefix='mc', folder='states/monte_carlo/mass_only')
 
 
-
+"""
 # Example of master script:
 datasets = {}
 
 # Input data 
 _theta = 6
 state_prefix_input = 'paper_mass_flux_const_{}_arcsec_single_only'.format(_theta)
-"""
-I want to run the following script on various values of theta (e.g. 1 to 10 arcsec)
-"""
+
+# Run the following script on various values of theta (e.g. 1 to 10 arcsec)
 for theta in np.arange(1, 11, 1):
     # Processed data
     state_prefix = 'monte_carlo_mass_only_1000_shift_{}_arcmin'.format(theta)
 
     # Compute 1000 realisations using a cross-matching limit of `theta` arcsec
     run_mc(state_prefix_input, state_prefix, theta, base_folder='states')
+"""

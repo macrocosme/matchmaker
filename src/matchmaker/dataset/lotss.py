@@ -15,6 +15,16 @@ class Lotss(Catalog):
     field_file_location = DATA_BASE_PATH + 'lotss/obslist.csv'
 
     def __init__(self, load_data=True, constrain=False, smin=None, compact_only=False, single_only=False):
+        """
+        Initialize the LOTSS dataset object.
+
+        Parameters:
+        - load_data (bool): Whether to load the data upon initialization. Default is True.
+        - constrain (bool): Whether to apply constraints on the data. Default is False.
+        - smin (float or None): Minimum flux density threshold. Default is None.
+        - compact_only (bool): Whether to include only compact sources. Default is False.
+        - single_only (bool): Whether to include only single-component sources. Default is False.
+        """
         # Required and practical columns
         super().__init__(ra=Column('RA', u.deg), dec=Column('DEC', u.deg))
         self.cols.ra_err = Column('E_RA', u.arcsec)
@@ -46,12 +56,23 @@ class Lotss(Catalog):
             self.load_data(constrain=constrain, smin=smin, compact_only=compact_only, single_only=single_only)
 
     def load_data(self, constrain=False, smin=None, compact_only=False, single_only=False):
+        """
+        Load data from the LOTSS dataset.
+
+        Args:
+            constrain (bool, optional): Whether to apply constraints on the loaded data. Defaults to False.
+            smin (float, optional): Minimum total flux value for constraint. Defaults to None.
+            compact_only (bool, optional): Whether to include only compact sources. Defaults to False.
+            single_only (bool, optional): Whether to include only single component sources. Defaults to False.
+
+        Returns:
+            None
+        """
         # LOAD LOTSS MAIN TABLE
         df = load_fits_as_dataframe(self.file_location)
         self.df = df
 
         if constrain:
-            # _smin = 0.8 if smin is None else smin
             if smin is not None:
                 const = (self.df[self.cols.measure.total_flux.label] >= smin) # 90% complete point-sources
 
@@ -82,6 +103,18 @@ class Lotss(Catalog):
         self.fields.df = pd.read_csv(self.field_file_location)
 
     def semi_major(self, mask=None, with_unit=False, to_unit=None):
+        """
+        Calculate the semi-major axis of the object.
+
+        Parameters:
+            mask (optional): A boolean mask to apply to the data.
+            with_unit (optional): If True, return the result with the unit. Default is False.
+            to_unit (optional): Convert the result to the specified unit.
+
+        Returns:
+            The semi-major axis of the object.
+
+        """
         a = self.prop_to_unit('major', self.cols.major.unit, mask=mask, with_unit=with_unit) / 2
 
         if to_unit:
@@ -93,6 +126,18 @@ class Lotss(Catalog):
         return a
 
     def semi_minor(self, mask=None, with_unit=False, to_unit=None):
+        """
+        Calculate the semi-minor axis of the ellipse.
+
+        Args:
+            mask (optional): A mask to apply to the data.
+            with_unit (bool, optional): Whether to include the unit in the result.
+            to_unit (optional): The unit to convert the result to.
+
+        Returns:
+            The semi-minor axis of the ellipse.
+
+        """
         b = self.prop_to_unit('minor', self.cols.minor.unit, mask=mask, with_unit=with_unit) / 2
 
         if to_unit:
@@ -104,8 +149,17 @@ class Lotss(Catalog):
         return b
     
     def set_distance(self, source:Catalog):
-        # Add distance columns information
+        """
+        Sets the distance information for the dataset based on a given source catalog.
 
+        Args:
+            source (Catalog): The source catalog containing the distance information.
+
+        Returns:
+            None
+        """
+
+        # Add distance columns information
         self.cols.z = source.cols.z
         self.cols.distance = source.cols.distance
 
@@ -129,14 +183,32 @@ class Lotss(Catalog):
         # self.df[self.cols.separation.label] = lotss_dist
 
     def luminosity_distance(self, mask=None, output_units='W_Hz', with_unit=False, with_error=False, log=False):
+        """
+        Calculate the luminosity distance for a given dataset.
+
+        Parameters:
+            mask (optional): A boolean mask to select specific rows from the dataset. Default is None.
+            output_units (optional): The desired units for the luminosity distance. Default is 'W_Hz'.
+            with_unit (optional): Whether to include the unit in the output. Default is False.
+            with_error (optional): Whether to calculate the luminosity distance with error. Default is False.
+            log (optional): Whether to return the logarithm of the luminosity distance. Default is False.
+
+        Returns:
+            If with_error is False:
+                - The luminosity distance as a single value if log is False.
+                - The logarithm of the luminosity distance if log is True.
+            If with_error is True:
+                - The luminosity distance as a tuple (l, l_err_low, l_err_high) if log is False.
+                - The logarithm of the luminosity distance as a tuple (log(l), log(l_err_low), log(l_err_high)) if log is True.
+        """
         df = self.df if mask is None else self.df.iloc[mask]
         l = _luminosity_distance(
-                df[self.cols.z.label],
-                df[self.cols.measure.total_flux.label],
-                alpha=-0.8,
-                output_units=output_units,
-                with_unit=with_unit
-            )
+            df[self.cols.z.label],
+            df[self.cols.measure.total_flux.label],
+            alpha=-0.8,
+            output_units=output_units,
+            with_unit=with_unit
+        )
         if not with_error:
             return l
         else:
@@ -160,6 +232,24 @@ class Lotss(Catalog):
                 return np.log10(l), np.log10(l_err_low), np.log10(l_err_high)
 
     def radio_loudness(self, obj1, mask_lotss=None, mask1=None, alphas=None, verbose=False):
+        """
+        Calculate the radio loudness of an object.
+
+        Parameters:
+        - obj1: The object for which to calculate the radio loudness.
+        - mask_lotss: Optional mask for selecting specific data from the LOTSS dataset.
+        - mask1: Optional mask for selecting specific data from obj1.
+        - alphas: Optional power-law index for scaling the flux.
+        - verbose: If True, print additional information during the calculation.
+
+        Returns:
+        - r_g: The radio loudness value.
+
+        Note:
+        - This method assumes that the LOTSS dataset and obj1 have specific columns defined.
+        - The calculation involves scaling the flux and calculating the radio-loudness value based on the flux and magnitude values.
+
+        """
         matched_obj1, matched_obj2 = get_matched(obj1, self, mask1=mask1, mask2=mask_lotss)
         S = matched_obj2[self.cols.measure.total_flux.label]
         try:
@@ -199,6 +289,20 @@ class Lotss(Catalog):
         return r_g
 
     def distance_to_lum_sfr_relation(self, obj1, mask_lotss=None, mask1=None):
+        """
+        Calculates the distance to the luminosity-star formation rate (lum-sfr) relation.
+
+        Args:
+            obj1: The first object.
+            mask_lotss: The mask for the LOTSS dataset.
+            mask1: The mask for the first object.
+
+        Returns:
+            The distance to the lum-sfr relation.
+
+        Raises:
+            None.
+        """
         matched_obj1, matched_obj2 = get_matched(obj1, self, mask1=mask1, mask2=mask_lotss)
         lum_w_hz = self.luminosity_distance(mask=mask_lotss)
         sfr = matched_obj1[obj1.cols.sfr.label]
@@ -211,6 +315,22 @@ class Lotss(Catalog):
         # return lum_w_hz - power_law(sfr)
 
     def select_lum_sfr_outliers(self, obj1, mask1=None, mask2=None, n_sigma=1.5, filter_on_sfr=None, store=True, verbose=False):
+        """
+        Selects luminosity and star formation rate (SFR) outliers based on a given threshold.
+
+        Parameters:
+            obj1 (object): The object to select outliers from.
+            mask1 (array-like, optional): A mask to apply on obj1.
+            mask2 (array-like, optional): A mask to apply on self.
+            n_sigma (float, optional): The number of standard deviations to use as the threshold for outlier selection.
+            filter_on_sfr (float, optional): The minimum SFR value to filter on.
+            store (bool, optional): Indicates whether to store the filtered indices in the matches object.
+            verbose (bool, optional): Indicates whether to print additional information during the selection process.
+
+        Returns:
+            numpy.ndarray: The indices of the selected outliers.
+
+        """
         matched_obj1, matched_obj2 = get_matched(obj1, self, mask1=mask1, mask2=mask2)
         lum_w_hz = self.luminosity_distance(mask=self.matches[obj1.name].filtered_idx if mask2 is None else mask2)
         sfr = matched_obj1[obj1.cols.sfr.label]
@@ -219,9 +339,9 @@ class Lotss(Catalog):
             for l, s in zip(lum_w_hz, sfr):
                 if np.isnan(s):
                     nulls += 1
-            print ('count(sfr==nan):', nulls)
+            print('count(sfr==nan):', nulls)
         # print (lum_w_hz.size, len(sfr))
-        cond = np.log10(lum_w_hz) >= np.log10(power_law(sfr)) + (n_sigma*np.log10(lum_sfr_sigma))
+        cond = np.log10(lum_w_hz) >= np.log10(power_law(sfr)) + (n_sigma * np.log10(lum_sfr_sigma))
         if filter_on_sfr is not None:
             cond &= (sfr > filter_on_sfr)
         if store:
@@ -230,9 +350,47 @@ class Lotss(Catalog):
             return np.where(cond)[0]
 
     def filter_s_code(self, mask=None, s_code='S'):
-        df = self.df if mask is None else self.df.iloc[mask]
-        return df['S_Code'].values == s_code
+            """
+            Filter the dataset based on the 'S_Code' column.
 
+            Args:
+                mask (array-like, optional): Boolean mask to filter the dataset. Defaults to None.
+                s_code (str, optional): The value to filter the 'S_Code' column. Defaults to 'S'.
+
+            Returns:
+                numpy.ndarray: Boolean array indicating whether each row matches the specified 'S_Code' value.
+            """
+            df = self.df if mask is None else self.df.iloc[mask]
+            return df['S_Code'].values == s_code
+
+    def si_sp(self, catalog_name=None, mask=None):
+                    """
+                    Calculate the spectral index (si_sp) for the given catalog_name or mask.
+
+                    Parameters:
+                    - catalog_name (str): The name of the catalog. If provided, it overrides the mask.
+                    - mask (array-like): An array-like object containing boolean values to filter the dataset.
+
+                    Returns:
+                    - si_sp (numpy.ndarray): An array of spectral indices calculated as the logarithm of the ratio
+                        between the 'Total_flux' and 'Peak_flux' columns of the dataset.
+
+                    If 'catalog_name' is not None, it overrides 'mask' and uses the filtered index of the specified catalog.
+                    If 'mask' is not None, it filters the dataset using the provided mask.
+                    If both 'catalog_name' and 'mask' are None, it uses the entire dataset.
+
+                    Note: The dataset should have 'Total_flux' and 'Peak_flux' columns.
+
+                    Example usage:
+                    >>> dataset.si_sp(catalog_name='catalog1')
+                    >>> dataset.si_sp(mask=[True, False, True, True, False])
+                    >>> dataset.si_sp()
+                    """
+                    if catalog_name is not None:
+                            mask = self.matches[catalog_name].filtered_idx
+                    matches = self.df.iloc[mask] if mask is not None else self.df
+                    si_sp = np.log(matches['Total_flux'] / matches['Peak_flux'])
+                    return si_sp
     def si_sp(self, catalog_name=None, mask=None):
         """
         if 'catalog_name' isn't none, it overrides 'mask'
@@ -245,15 +403,39 @@ class Lotss(Catalog):
 
     def sn(self, catalog_name=None, mask=None):
         """
-        if 'catalog_name' isn't none, it overrides 'mask'
+        Calculate the signal-to-noise ratio (S/N) for the given catalog or mask.
+
+        If 'catalog_name' is not None, it overrides 'mask' and calculates the S/N
+        for the specified catalog. Otherwise, if 'mask' is provided, it calculates
+        the S/N for the subset of matches defined by the mask. If neither 'catalog_name'
+        nor 'mask' is provided, it calculates the S/N for all matches in the dataset.
+
+        Parameters:
+            catalog_name (str, optional): The name of the catalog to calculate the S/N for.
+                If provided, it overrides the 'mask' parameter. Default is None.
+            mask (array-like, optional): A boolean mask indicating the subset of matches
+                to calculate the S/N for. Default is None.
+
+        Returns:
+            s_n (pandas.Series): The calculated signal-to-noise ratio (S/N) values.
+
         """
         if catalog_name is not None:
             mask = self.matches[catalog_name].filtered_idx
         matches = self.df.iloc[mask] if mask is not None else self.df
-        s_n = matches['Total_flux']/matches['E_Total_flux']
+        s_n = matches['Total_flux'] / matches['E_Total_flux']
         return s_n
 
     def filter_mask_to_r99_sigmoid(self, catalog_name):
+        """
+        Filters the mask to include only the subset of source-target cross-section where the source size in LoTSS is less or equal to R99.9 sigmoid (Shimwell+2022).
+
+        Parameters:
+        - catalog_name (str): The name of the catalog.
+
+        Returns:
+        None
+        """
         # Subset of source-target cross-section where source size in LoTSS is less or equal to R99.9 sigmoid (Shimwell+2022)
         # matches = self.df.iloc[self.matches[catalog_name].filtered_idx]
         si_sp = self.si_sp(catalog_name)
@@ -266,6 +448,17 @@ class Lotss(Catalog):
         self.matches[catalog_name].filtered_compact_idx = np.where(si_sp <= sigmoid)[0]
 
     def r99_sigmoid(self, mask=None, return_indices=False):
+        """
+        Applies the R99 sigmoid function to the dataset.
+
+        Args:
+            mask (optional): A boolean mask to apply to the dataset. If provided, only the rows that satisfy the mask will be used.
+            return_indices (optional): If True, returns the indices of the rows that satisfy the sigmoid condition. If False, returns a boolean mask.
+
+        Returns:
+            If return_indices is False, returns a boolean mask indicating whether each row satisfies the sigmoid condition.
+            If return_indices is True, returns the indices of the rows that satisfy the sigmoid condition.
+        """
         df = self.df if mask is None else self.df.iloc[mask]
 
         si_sp = np.log(df['Total_flux']/df['Peak_flux'])
@@ -277,16 +470,33 @@ class Lotss(Catalog):
             return np.where(si_sp <= sigmoid)[0]
 
     def filter_mask_to_beam_size(self, catalog_name):
-        # Subset of source-target cross-section where source size in LoTSS is less or equal to beam size
+        """
+        Filters the mask to include only the sources where the source size in LoTSS is less than or equal to the beam size.
+
+        Parameters:
+            catalog_name (str): The name of the catalog.
+
+        Returns:
+            None
+        """
         matches = self.df.iloc[self.matches[catalog_name].filtered_idx][self.cols.radio.dc_maj.label]
         beam = self.beam['bmaj'].to(self.cols.radio.dc_maj.unit)
 
-        # filtered_compact_idx and be used in conjunction with mask_idx and filtered_idx.
-        # E.g. source.df.iloc[self.matches[source.name].mask_idx[self.matches[source.name].filtered_compact_idx]]
-        # E.g. self.df.iloc[self.matches[source.name].filtered_idx[self.matches[source.name].filtered_compact_idx]]
         self.matches[catalog_name].filtered_compact_idx = np.where(matches <= beam)[0]
 
     def get_closest_field(self, ra, dec, min_date=None):
+        """
+        Get the closest field to the given coordinates (ra, dec).
+
+        Args:
+            ra (float): Right Ascension coordinate.
+            dec (float): Declination coordinate.
+            min_date (datetime, optional): Minimum date for the observation. Defaults to None.
+
+        Returns:
+            tuple: A tuple containing the closest field name and the end date of the observation.
+                   If no field is found, returns (None, None).
+        """
         # Adapted from H. Vedantham's script
         cd = np.cos(0.5 * np.pi/180.0 * (dec+self.fields.df[self.cols.dec.label]))
         dis = (cd**2 * (self.fields.df[self.cols.ra.label]-ra)**2 + (self.fields.df[self.cols.dec.label]-dec)**2)**0.5
@@ -313,6 +523,12 @@ class Lotss(Catalog):
             return None, None
 
     def set_dr2_regions_boxes(self):
+        """
+        Sets the bounding boxes for three regions in the dataset based on the values of ra and dec columns.
+
+        Returns:
+            None
+        """
         # lotss region 1 (left)
         l1_ra_max = self.df.loc[self.df[self.cols.ra.label] < 70, self.cols.ra.label].max()
         l1_ra_min = self.df.loc[self.df[self.cols.ra.label] < 70, self.cols.ra.label].min()
@@ -339,6 +555,16 @@ class Lotss(Catalog):
         self.boxes = [l1_box, l2_box, l3_box]
 
     def compact_sources_idx(self, mask=None):
+        """
+        Returns the compact source indices based on the given mask.
+
+        Parameters:
+            mask (array-like, optional): A boolean mask to filter the dataset. Default is None.
+
+        Returns:
+            compact_idx (pandas.Index): The indices of the compact sources.
+
+        """
         sample = self.df if mask is None else self.df.iloc[mask]
         compact_idx = sample.loc[
             # (our_radios['Maj'] <= lotss_beam['bmaj'] * 3600) |
@@ -348,9 +574,28 @@ class Lotss(Catalog):
         return compact_idx
 
     def mask_idx_of_compact_sources(self, catalog_name, mask=None):
+        """
+        Returns the indices of compact sources in the dataset that satisfy the given mask.
+
+        Parameters:
+            catalog_name (str): The name of the catalog.
+            mask (array-like, optional): A boolean mask indicating which sources to include. Defaults to None.
+
+        Returns:
+            list: A list of indices corresponding to the compact sources that satisfy the mask.
+        """
         return [np.where(i == self.matches[catalog_name].idx)[0][0] for i in self.compact_sources_idx(mask=mask)]
 
     def set_survey_specific_columns(self):
+        """
+        Set the survey-specific columns for the LOTSS dataset.
+
+        This method initializes and assigns values to various columns used in the LOTSS dataset.
+        Each column is defined as an instance of the `Column` class and assigned to the corresponding attribute in `self.cols`.
+
+        Returns:
+            None
+        """
         # Radio columns
         self.cols.radio = Column()
         self.cols.radio.source_name = Column('Source_Name')
