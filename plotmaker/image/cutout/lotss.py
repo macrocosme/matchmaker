@@ -1,10 +1,11 @@
-from ..utils import set_image_radii
-from ....matchmaker.utils import check_folder_exists_or_create, get_matched
-from ....matchmaker.dataset import Image
 import astropy.units as u
+import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
-import numpy as np
+
+from ....matchmaker.dataset import Image
+from ....matchmaker.utils import check_folder_exists_or_create, get_matched
+from ..utils import set_image_radii
 
 # Example use to get cutout from coord:
 # python radio_cutout_matchmaker.py 9.59220833333 32.63822222222 P010+34 652 0.038412;
@@ -15,7 +16,7 @@ def make_lotss_cutouts_download_script(obj1, obj_lotss, mask1=None, mask_lotss=N
 
     # TODO: the split with repetition here is cumbersome and prone to future errors... find a better way.
     if saveto is not None:
-        save = '{}/{}'.format(check_folder_exists_or_create(saveto_folder), saveto)
+        save = f'{check_folder_exists_or_create(saveto_folder)}/{saveto}'
         with open(save, 'w+') as f:
             for (i, row_obj1), (j, row_lotss) in zip(matched_obj1.iterrows(), matched_lotss.iterrows()):
                 line = 'python radio_cutout_matchmaker.py {} {} {} {} {:f} {};'.format(
@@ -31,12 +32,12 @@ def make_lotss_cutouts_download_script(obj1, obj_lotss, mask1=None, mask_lotss=N
                     print(i, j, line)
                 # Temporary trick as we need to go through different servers independently to gather these images:
                 obj_lotss.matches[obj1.name].images[i] = Image(source_catalog='lotss dr2')
-                obj_lotss.matches[obj1.name].images[i].file_location = 'data/lotss/{}/{}_cutout.fits'.format(outpath, i)
+                obj_lotss.matches[obj1.name].images[i].file_location = f'data/lotss/{outpath}/{i}_cutout.fits'
 
-        print ('Saved to {}'.format(save))
+        print (f'Saved to {save}')
     else:
         if print_commands:
-            for (i, row_obj1), (j, row_lotss) in zip(matched_obj1.iterrows(), matched_lotss.iterrows()):
+            for (i, row_obj1), (_j, row_lotss) in zip(matched_obj1.iterrows(), matched_lotss.iterrows()):
                 print('python radio_cutout_matchmaker.py {} {} {} {} {:f} {};'.format(
                     row_obj1[obj1.cols.ra.label],
                     row_obj1[obj1.cols.dec.label],
@@ -47,7 +48,7 @@ def make_lotss_cutouts_download_script(obj1, obj_lotss, mask1=None, mask_lotss=N
                 ))
                 # Temporary trick as we need to go through different servers independently to gather these images:
                 obj_lotss.matches[obj1.name].images[i] = Image(source_catalog='lotss dr2')
-                obj_lotss.matches[obj1.name].images[i].file_location = 'data/lotss/{}/{}_cutout.fits'.format(outpath, i)
+                obj_lotss.matches[obj1.name].images[i].file_location = f'data/lotss/{outpath}/{i}_cutout.fits'
 
 
 def make_lotss_cutouts_obj1_download_script(obj1, obj_lotss, mask1=None,
@@ -70,7 +71,7 @@ def make_lotss_cutouts_obj1_download_script(obj1, obj_lotss, mask1=None,
 
     # TODO: the split with repetition here is cumbersome and prone to future errors... find a better way.
     if saveto is not None:
-        save = '{}/{}'.format(check_folder_exists_or_create(saveto_folder), saveto)
+        save = f'{check_folder_exists_or_create(saveto_folder)}/{saveto}'
         with open(save, 'w+') as f:
             for (i, row_obj1) in matched_obj1.iterrows():
 
@@ -79,27 +80,17 @@ def make_lotss_cutouts_obj1_download_script(obj1, obj_lotss, mask1=None,
                                                               row_obj1[obj1.cols.tns.discovery_date_ut.label])
                 if field is not None:
                     print (i, row_obj1['Name'], row_obj1['ra'], row_obj1['dec'], obs_date)
-                    line = 'python radio_cutout_byname.py "{}" {};'.format(
-                        row_obj1[obj1.cols.tns.name.label],
-                        field
-                    )
+                    line = f'python radio_cutout_byname.py "{row_obj1[obj1.cols.tns.name.label]}" {field};'
 
-                    line = 'python radio_cutout_matchmaker.py {} {} {} {} {:f} {};'.format(
-                        row_obj1[obj1.cols.ra.label],
-                        row_obj1[obj1.cols.dec.label],
-                        field,
-                        i,
-                        set_image_radii(obj_lotss, unit=u.deg, stretch=stretch),
-                        outpath
-                    )
+                    line = f'python radio_cutout_matchmaker.py {row_obj1[obj1.cols.ra.label]} {row_obj1[obj1.cols.dec.label]} {field} {i} {set_image_radii(obj_lotss, unit=u.deg, stretch=stretch):f} {outpath};'
                     f.write(line + '\n')
                     if print_commands:
                         print(i, line)
                     # Temporary trick as we need to go through different servers independently to gather these images:
                     obj_lotss.matches[obj1.name].images[i] = Image(source_catalog='lotss dr2')
-                    obj_lotss.matches[obj1.name].images[i].file_location = 'data/lotss/{}/{}_cutout.fits'.format(outpath, i)
+                    obj_lotss.matches[obj1.name].images[i].file_location = f'data/lotss/{outpath}/{i}_cutout.fits'
 
-        print ('Saved to {}'.format(save))
+        print (f'Saved to {save}')
 
 def make_cutout_from_field_fits(ra, dec, filename, size, name, outpath):
     # ra = float(sys.argv[1])
@@ -117,7 +108,8 @@ def make_cutout_from_field_fits(ra, dec, filename, size, name, outpath):
 
     # position = SkyCoord(ra=ra*u.deg, dec = dec*u.deg, frame='icrs')
 
-    h['NAXIS']=2; h['WCSAXES']=2
+    h['NAXIS'] = 2
+    h['WCSAXES'] = 2
     del h['NAXIS3'], h['NAXIS4'], h['CRPIX3'], h['CDELT3'], h['CRPIX4'], h['CDELT4'], h['CRVAL3'], h['CRVAL4'], h['CTYPE3'], h['CTYPE4'], h['CUNIT4']
     wcs = WCS(h)
 
@@ -141,5 +133,5 @@ def make_cutout_from_field_fits(ra, dec, filename, size, name, outpath):
 
     fits.writeto(data = data_out,
                  header = h,
-                 filename = "%s/%s_cutout.fits" % (outpath, name),
+                 filename = f"{outpath}/{name}_cutout.fits",
                  overwrite = True)

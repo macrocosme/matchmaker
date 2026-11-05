@@ -1,16 +1,12 @@
-import os
+import astropy.units as u
 import numpy as np
 import wget
 from tqdm import tqdm
 
-import astropy.units as u
+from ....matchmaker.dataset import Column, Image
+from ....matchmaker.utils import check_folder_exists_or_create, remove_file_from_folder, remove_file_if_exists
 from ..utils import set_image_radii
-from ....matchmaker.utils import (
-    check_folder_exists_or_create,
-    remove_file_if_exists,
-    remove_file_from_folder
-)
-from ....matchmaker.dataset import Image, Column
+
 
 # PanSTARSS
 def get_name(ra, dec):
@@ -18,7 +14,7 @@ def get_name(ra, dec):
     ram = int(np.floor(60*(ra/15-rah)))
     decd = int(np.floor(dec))
     decm = int(np.floor(60*(dec-decd)))
-    return "BDC-J%02d%02d+%02d%02d"%(rah,ram,decd,decm)
+    return f"BDC-J{rah:02d}{ram:02d}+{decd:02d}{decm:02d}"
 
 arcsec_to_pixel = lambda arcsec: np.round(arcsec / 0.25).astype(int) # 0.25 arcsec / pixel in PanSTARRS
 
@@ -49,28 +45,28 @@ def download_images(obj1, obj2, mask1=None, mask2=None,
             size = arcsec_to_pixel(set_image_radii(obj2, unit=u.arcsec, stretch=stretch))
             check_folder_exists_or_create(output_path, return_folder=False)
 
-            fname = wget.download("{}/ps1filenames.py?ra={:f}&dec={:f}".format(base_url, ra, dec),
+            fname = wget.download(f"{base_url}/ps1filenames.py?ra={ra:f}&dec={dec:f}",
                                   out=check_folder_exists_or_create('tmp/'))
 
             image = obj1.matches[obj2.name].images[i] = Image(source_catalog='panstarrs')
 
-            with open(fname, "r") as f:
+            with open(fname) as f:
                 for line in f.readlines()[1:]:
                     w = line.strip("\n").split(" ")
                     filter = w[4]
                     red = w[7]
                     image.filters[filter] = Column()
-                    image.filters[filter].remote_download = "{}/fitscut.cgi?" \
-                                                            "ra={:f}&" \
-                                                            "dec={:f}&" \
-                                                            "red={}&" \
+                    image.filters[filter].remote_download = f"{base_url}/fitscut.cgi?" \
+                                                            f"ra={ra:f}&" \
+                                                            f"dec={dec:f}&" \
+                                                            f"red={red}&" \
                                                             "wcs=true&" \
                                                             "format=fits&" \
-                                                            "size={}".format(base_url, ra, dec, red, size)
+                                                            f"size={size}"
 
                     image.filters[filter].file_location = wget.download(
                         remove_file_if_exists(image.filters[filter].remote_download, return_filename=True),
-                        out="{}{}.fits".format(output_path, i)
+                        out=f"{output_path}{i}.fits"
                     )
 
                 remove_file_from_folder(fname)

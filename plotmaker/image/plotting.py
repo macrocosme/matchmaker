@@ -1,18 +1,16 @@
+import aplpy
+import astropy.units as u
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from astropy.io import fits
-import astropy.units as u
-from astropy.wcs import WCS
 from astropy.nddata import Cutout2D
-
-import aplpy
-import matplotlib.pyplot as plt
+from astropy.wcs import WCS
 from tqdm import tqdm
 
+from ...matchmaker.utils import check_folder_exists_or_create, get_matched, load_fits_as_dataframe
 from .cutout.panstarrs import get_name
 from .utils import set_image_radii
-from ...matchmaker.utils import check_folder_exists_or_create, get_matched, load_fits_as_dataframe
 
 pink_rgba = (230/255, 29/255, 95/255, 1)
 pink_rgb = (230/255, 29/255, 95/255)
@@ -118,7 +116,7 @@ def plot_panstarrs_filter(obj1, obj2,
                                                      '#ffffd9']
         gc.show_contour(dd,
                         colors=colors,
-                        labels=[r'$\mu+{}\sigma$'.format(s) for s in sigmas],
+                        labels=[rf'$\mu+{s}\sigma$' for s in sigmas],
                         alpha=0.75,
                         levels=[dd_med + s*dd_mad for s in sigmas],
                         show_levels=show_levels,
@@ -212,7 +210,7 @@ def plot_panstarrs_filter(obj1, obj2,
             try:
                 _row = df_alpha.loc[df_alpha['lotss_id'] == j][['alpha', 'alpha_err']].values[0]
                 plt.annotate(
-                    r"$\alpha=%.1f\pm%.2f$" % (_row[0], _row[1]),
+                    rf"$\alpha={_row[0]:.1f}\pm{_row[1]:.2f}$",
                     xy=(.35, 0.04) if not scalebar else (0.35, 0.9),
                     xycoords='axes fraction',
                     color='white',
@@ -324,13 +322,13 @@ def plot_panstarrs_filter(obj1, obj2,
             gc.scalebar.set_font_size(20)
             gc.scalebar.set_color('white')
 
-        outpath = check_folder_exists_or_create('images/matches/{}'.format(filter) if extra_path is None else 'images/matches/{}/{}'.format(extra_path, filter),
+        outpath = check_folder_exists_or_create(f'images/matches/{filter}' if extra_path is None else f'images/matches/{extra_path}/{filter}',
                                                 return_folder=True)
         # gc.save("%s/%s_%s.pdf" % (outpath, j, get_name(row_obj1[obj1.cols.ra.label],
         #                                                row_obj1[obj1.cols.dec.label])), dpi=250)
-        outfile = "%s/%s.png" % (outpath, j if not by_name else source_name)
+        outfile = f"{outpath}/{j if not by_name else source_name}.png"
         if verbose:
-            print ('Saving to {}'.format(outfile))
+            print (f'Saving to {outfile}')
         gc.save(outfile, dpi=dpi)
         gc.close()
 
@@ -406,7 +404,7 @@ def plot_lotss(obj1, obj2, mask1=None, mask2=None, d2d_obj1=None, d2d_obj2=None,
         # Check for multi-components
         if row_obj2['S_Code'] == 'M':
             df = load_fits_as_dataframe('../data/LoTSS/LoTSS_DR2_v110.gaus.fits')
-            for k, row in df.loc[df['Source_Name'] == row_obj2['Source_Name']].iterrows():
+            for _k, row in df.loc[df['Source_Name'] == row_obj2['Source_Name']].iterrows():
                 gc.show_markers(row[obj2.cols.ra.label],
                                 row[obj2.cols.dec.label],
                                 marker='o',
@@ -462,11 +460,11 @@ def plot_lotss(obj1, obj2, mask1=None, mask2=None, d2d_obj1=None, d2d_obj2=None,
         # gc.set_title('LoTSS df id: %d' % j)
 
         gc.set_theme('publication')
-        outpath = check_folder_exists_or_create('images/matches/lotss' if extra_path is None else 'images/matches/{}/lotss'.format(extra_path),
+        outpath = check_folder_exists_or_create('images/matches/lotss' if extra_path is None else f'images/matches/{extra_path}/lotss',
                                                 return_folder=True)
-        outfile = "%s/%s_%s.pdf" % (outpath, j, get_name(row_obj1[obj1.cols.ra.label],
+        outfile = "{}/{}_{}.pdf".format(outpath, j, get_name(row_obj1[obj1.cols.ra.label],
                                                        row_obj1[obj1.cols.dec.label]))
-        print ('Saving to {}'.format(outfile))
+        print (f'Saving to {outfile}')
         gc.save(outfile, dpi=250)
         gc.close()
 
@@ -538,16 +536,16 @@ def plot_source_on_lotss(obj1, obj2, mask1=None, core_collapse_only=False, stret
 
             gc.set_title('{}{}'.format(
                 row_obj1[obj1.cols.tns.name.label],
-                ':Type {}'.format(row_obj1[obj1.cols.obj_type.label]) #if obj1.prop('obj_type') is not None else ''
+                f':Type {row_obj1[obj1.cols.obj_type.label]}' #if obj1.prop('obj_type') is not None else ''
             ))
             gc.set_theme('publication')
-            outpath = check_folder_exists_or_create('images/matches/lotss' if extra_path is None else 'images/matches/{}/lotss'.format(extra_path),
+            outpath = check_folder_exists_or_create('images/matches/lotss' if extra_path is None else f'images/matches/{extra_path}/lotss',
                                                     return_folder=True)
             outfile = "{}/{}_{}.pdf".format(outpath,
                                             row_obj1[obj1.cols.tns.name.label].replace(' ', ''),
                                             stretch)
             if verbose:
-                print ('Saving to {}'.format(outfile))
+                print (f'Saving to {outfile}')
             gc.save(outfile, dpi=250)
             gc.close()
         except FileNotFoundError:

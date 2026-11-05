@@ -1,7 +1,8 @@
-import numpy as np
-import pandas as pd
 import astropy.units as u
-from . import (Catalog, Column, DATA_BASE_PATH)
+import pandas as pd
+
+from . import DATA_BASE_PATH, Catalog, Column
+
 
 class Reines(Catalog):
     file_location = DATA_BASE_PATH + 'reines/Reines_table3.csv'

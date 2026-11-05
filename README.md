@@ -11,9 +11,12 @@ The instance requires a `load_data` function that loads the dataset into a panda
 in `csv` and `fits` format. At least two datasets are required to perform cross-matching (or compare a unique dataset to itself).
 For each dataset, the Catalog class requires, at minimum, how to access the columns corresponding to right ascension (RA) and declination (DEC).
 
-You can then perform cross-matching using `matchmaker.matchmaker.crossmatch.crossmatch`, specifying two `Catalog` inputs, 
+You can then perform cross-matching using `matchmaker.crossmatch.crossmatch`, specifying two `Catalog` inputs, 
 spatial separation threshold for matching with corresponding physical unit, and wether or not to filter within an ellipse 
 around the source centroid. Catalog masks can be provided to work on partial datasets.
+A source is matched when the on-sky separation to its nearest neighbour is below `sep + n_sigma * sigma`, where `sigma` 
+combines the positional uncertainties of both objects (catalogs without `ra_err`/`dec_err` columns contribute zero). 
+Pass `legacy=True` to reproduce the historical shift-grid matching for comparison with older results.
 
 One can evaluate chance allignment probabilities with one of `matchmaker.matchmaker.stats.chance_association` (circle) or 
 `matchmaker.matchmaker.stats.chance_association_ab` (ellipse), specifying the source catalog `Catalog`, the name of the target `Catalog`, 

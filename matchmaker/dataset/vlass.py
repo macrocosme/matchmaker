@@ -1,6 +1,8 @@
-import pandas as pd
 import astropy.units as u
-from . import (Catalog, Column, DATA_BASE_PATH)
+import numpy as np
+import pandas as pd
+
+from . import DATA_BASE_PATH, Catalog, Column
 
 
 class Vlass(Catalog):
@@ -35,11 +37,11 @@ class Vlass(Catalog):
     def load_data(self):
         df = pd.read_csv(self.file_location)
 
-        # Some RA and DEC uncertainties are marked as -99
-        # which makes the code crash later, so I replace it with 0 for now.
-        # The following comparison may break at some point...
-        df.loc[df[self.cols.ra_err.label] == -99] = 0.
-        df.loc[df[self.cols.dec_err.label] == -99] = 0.
+        # Some RA and DEC uncertainties are -99 (undefined). Mark only the error as unknown;
+        # the previous code assigned 0 to the whole row, moving those components to (0, 0).
+        # crossmatch treats NaN positional errors as zero.
+        for col in (self.cols.ra_err.label, self.cols.dec_err.label):
+            df.loc[df[col] == -99, col] = np.nan
 
         self.df = df
 

@@ -1,7 +1,8 @@
-import pandas as pd
 import astropy.units as u
-from . import (Catalog, Column, DATA_BASE_PATH)
+import numpy as np
+
 from ..utils import load_fits_as_dataframe
+from . import DATA_BASE_PATH, Catalog, Column
 
 
 class Nvss(Catalog):
@@ -11,8 +12,10 @@ class Nvss(Catalog):
 
     def __init__(self, load_data=False, constrain=False):
         super().__init__(ra=Column('RAJ2000', u.deg), dec=Column('DEJ2000', u.deg))
-        self.cols.ra_err = Column('e_RAJ2000', u.deg)
-        self.cols.dec_err = Column('e_DEJ2000', u.deg)
+        # VizieR NVSS: e_RAJ2000 is in seconds of time, e_DEJ2000 in arcsec. load_data derives
+        # an on-sky RA error in arcsec (15 cos(dec) arcsec per second of time).
+        self.cols.ra_err = Column('e_RA_arcsec', u.arcsec, 'on-sky RA uncertainty, derived from e_RAJ2000')
+        self.cols.dec_err = Column('e_DEJ2000', u.arcsec)
         self.cols.major = Column('MajAxis', u.arcsec)
         self.cols.minor = Column('MinAxis', u.arcsec)
         self.cols.pa = Column('PA', u.deg)
@@ -20,7 +23,8 @@ class Nvss(Catalog):
         self.cols.measure = Column()
         self.cols.measure.total_flux = Column('S1_4', u.mJy)
         self.cols.measure.total_flux_err = Column('e_S1_4', u.mJy)
-        self.cols.measure.peak_flux = Column('resFlux', u.mJy * u.beam**-1)
+        # NVSS (VizieR) has no peak flux column; resFlux is the peak *residual* after fitting.
+        self.cols.measure.residual_flux = Column('resFlux', u.mJy * u.beam**-1)
 
         # self.beam = 2.5 * u.arcsec
         self.frequency_band = 'L'
@@ -33,6 +37,7 @@ class Nvss(Catalog):
 
     def load_data(self, constrain=False):
         df = load_fits_as_dataframe(self.file_location)
+        df['e_RA_arcsec'] = df['e_RAJ2000'] * 15.0 * np.cos(np.radians(df['DEJ2000']))
 
         # if constrain:
         #     df = df.loc[df[self.cols.measure.total_flux.label] >= 1.5]

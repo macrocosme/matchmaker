@@ -1,30 +1,25 @@
-import numpy as np
 import astropy.units as u
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import colors
 
-from .utils import set_size
-
-from ..matchmaker.utils import (
-    check_folder_exists_or_create,
-    check_strictly_positive,
-    sort_dict_by_value,
-    intersection
-)
-from ..matchmaker.measures import (
-    luminosity_distance,
-    w_hz_to_erg_s_hz,
-    erg_s_hz_to_w_hz,
-)
-from ..matchmaker.model.lofar import power_law, sigma as l_sfr_sigma
 from ..matchmaker.dataset import sources
+from ..matchmaker.measures import (
+    erg_s_hz_to_w_hz,
+    w_hz_to_erg_s_hz,
+)
 from ..matchmaker.model import wise
+from ..matchmaker.model.lofar import power_law
+from ..matchmaker.model.lofar import sigma as l_sfr_sigma
+from ..matchmaker.utils import check_folder_exists_or_create, check_strictly_positive, intersection
+from .utils import set_size
 
 
 def mscatter(x, y, ax=None, m=None, **kw):
     # Found on stack overflow. TODO: find ref.
     import matplotlib.markers as mmarkers
-    if not ax: ax=plt.gca()
+    if not ax:
+        ax = plt.gca()
     sc = ax.scatter(x,y,**kw)
     if (m is not None) and (len(m)==len(x)):
         paths = []
@@ -112,7 +107,7 @@ def diagnostics(obj1, obj2,
 
     # TODO: use zorder to put diamonds in front of the other markers
     zorder = np.argsort([3 if wise.is_AGN(matched_w1w2.values[i], matched_w2w3.values[i]) else 2 \
-        if i in matched.filtered_compact_idx else 1 for i, idx in enumerate(matched.filtered_idx)])
+        if i in matched.filtered_compact_idx else 1 for i, idx in enumerate(matched.filtered_idx)])  # noqa: F841
 
     i, j = 0, 0
 
@@ -124,7 +119,7 @@ def diagnostics(obj1, obj2,
             ax = _ax[i]
 
         if p == 'plot_flux':
-            ax.set_title('Expected chance association: %d out of %d' % (chance.expected, chance.total))
+            ax.set_title(f'Expected chance association: {chance.expected:.0f} out of {chance.total:.0f}')
             scat = mscatter(matched_obj1['mstar'],
                             matched_obj2['Peak_flux'],
                             s=size,
@@ -284,7 +279,7 @@ def diagnostics(obj1, obj2,
                               norm=norm)
             ax.set_ylabel('log sSFR')
             ax.set_xlabel('SDSS g-r (mag)')
-            fig.colorbar(scat, label='$\logz$', ax=ax)
+            fig.colorbar(scat, label=r'$\logz$', ax=ax)
 
         if p == 'mstar_ssfr':
             scat = ax.scatter(matched_obj1['mstar'],
@@ -346,7 +341,7 @@ def diagnostics(obj1, obj2,
             # ax.axhline(sources.l_ptf10hgi.to(u.W * u.Hz**-1).value, c='red', label='PTF10hgi')
 
             ax.set_xlabel(r'$SFR (M_\odot~yr^{-1})$')
-            ax.set_ylabel('$L_{150~MHz}~(W~Hz^{-1})/(M/10^{10}M_{\odot})^{0.44}$')
+            ax.set_ylabel(r'$L_{150~MHz}~(W~Hz^{-1})/(M/10^{10}M_{\odot})^{0.44}$')
             ax.set_xscale('log')
             ax.set_yscale('log')
 
@@ -392,16 +387,16 @@ def diagnostics(obj1, obj2,
             0.02, # width
             0.8   # height
         ])
-        cbar = fig.colorbar(scat,
-                            cax=cb_ax,
-                            label=r'$z$',
-                            shrink=0.6)
+        fig.colorbar(scat,
+                     cax=cb_ax,
+                     label=r'$z$',
+                     shrink=0.6)
 
     if save:
         check_folder_exists_or_create(path)
         filename = '{}/diagnostic_{}'.format(path, 'a' if use_a else 'no_a')
-        print('Saving diagnostics to: {}'.format(filename))
-        plt.savefig('{}.pdf'.format(filename))
+        print(f'Saving diagnostics to: {filename}')
+        plt.savefig(f'{filename}.pdf')
         # plt.savefig('{}.png'.format(filename), dpi=250)
 
 def spectrum(datasets:dict, reference_dataset:str, source_dataset:str, reference_base_mask=None,
@@ -410,12 +405,10 @@ def spectrum(datasets:dict, reference_dataset:str, source_dataset:str, reference
              individual=False):
     # Too many ifs for my liking... this could likely be simplified.
 
-    ref_masks = {}
-    lens = {}
+    ref_masks = {}  # noqa: F841
+    lens = {}  # noqa: F841
     common = None
-    try:
-        datasets[reference_dataset].matches[source_dataset].radio_spectra
-    except:
+    if not hasattr(datasets[reference_dataset].matches[source_dataset], 'radio_spectra'):
         print ('init radio_spectra dict')
         datasets[reference_dataset].matches[source_dataset].radio_spectra = {}
 
@@ -471,7 +464,7 @@ def spectrum(datasets:dict, reference_dataset:str, source_dataset:str, reference
             fig, ax = plt.subplots(1, 1, figsize=set_size(width=900, vertical=False))
             for freq, flux, flux_err, i in freq_flux:
                 _sorted = np.argsort(freq)
-                ax.errorbar(freq[_sorted], flux[_sorted], yerr=flux_err, fmt='o-', label='lotss df id:{}'.format(i))
+                ax.errorbar(freq[_sorted], flux[_sorted], yerr=flux_err, fmt='o-', label=f'lotss df id:{i}')
             ax.set_xlabel(r'Frequency ({})'.format(freq_unit_plot.to_string('latex_inline')))
             ax.set_ylabel(r'Total flux ({})'.format(flux_unit_plot.to_string('latex_inline')))
             ax.set_xscale('log')
@@ -490,13 +483,13 @@ def spectrum(datasets:dict, reference_dataset:str, source_dataset:str, reference
 
             if save:
                 check_folder_exists_or_create(path)
-                filename = '{}/spectra.pdf'.format(path)
+                filename = f'{path}/spectra.pdf'
                 plt.savefig(filename)
         else:
             for freq, flux, flux_err, i in freq_flux:
                 fig, ax = plt.subplots(1, 1, figsize=set_size(width=900, vertical=False))
                 _sorted = np.argsort(freq)
-                ax.errorbar(freq[_sorted], flux[_sorted], yerr=flux_err, fmt='o-', label='lotss df id:{}'.format(i))
+                ax.errorbar(freq[_sorted], flux[_sorted], yerr=flux_err, fmt='o-', label=f'lotss df id:{i}')
                 ax.set_xlabel(r'Frequency ({})'.format(freq_unit_plot.to_string('latex_inline')))
                 ax.set_ylabel(r'Total flux ({})'.format(flux_unit_plot.to_string('latex_inline')))
                 ax.set_xscale('log')
@@ -515,8 +508,8 @@ def spectrum(datasets:dict, reference_dataset:str, source_dataset:str, reference
 
                 if save:
                     check_folder_exists_or_create(path)
-                    filename = '{}/spectra_{}.pdf'.format(path, i)
-                    print ('saving to {}'.format(filename))
+                    filename = f'{path}/spectra_{i}.pdf'
+                    print (f'saving to {filename}')
                     # if i not in datasets[reference_dataset].matches[source_dataset].radio_spectra.keys():
                     plt.savefig(filename)
                     datasets[reference_dataset].matches[source_dataset].radio_spectra[i] = {

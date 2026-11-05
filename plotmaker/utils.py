@@ -1,4 +1,3 @@
-import astropy.units as u
 
 GOLDEN_RATIO = (5 ** 0.5 - 1) / 2
 # WIDTH=3.54

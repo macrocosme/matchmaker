@@ -1,10 +1,11 @@
-from ..utils import set_size
 import matplotlib.pyplot as plt
+import wget
 from astropy.io import fits
 from specutils import Spectrum1D
-import wget
 
 from ...matchmaker.utils import check_folder_exists_or_create
+from ..utils import set_size
+
 
 def plot_sdss_spectrum(spectrum, idx, comment=None, save=False, path='spectra/matches', use_a=False, fig_width=900, vertical=False):
     # Read spectral data
@@ -22,8 +23,8 @@ def plot_sdss_spectrum(spectrum, idx, comment=None, save=False, path='spectra/ma
     if save:
         check_folder_exists_or_create(path)
         filename = '{}/{}_{}'.format(path, idx,'a' if use_a else 'no_a')
-        print('Saving spectrum to: {}'.format(filename))
-        plt.savefig('{}.pdf'.format(filename))
+        print(f'Saving spectrum to: {filename}')
+        plt.savefig(f'{filename}.pdf')
 
 def plot_lamost_spectrum(file_url, idx, comment=None, save=False, path='spectra/matches', use_a=False, fig_width=900, vertical=False):
     d = wget.download(file_url, 'tmp/')
@@ -37,6 +38,6 @@ def plot_lamost_spectrum(file_url, idx, comment=None, save=False, path='spectra/
     if save:
         check_folder_exists_or_create(path)
         filename = '{}/{}_lamost_{}'.format(path, idx,'a' if use_a else 'no_a')
-        print('Saving spectrum to: {}'.format(filename))
-        plt.savefig('{}.pdf'.format(filename))
+        print(f'Saving spectrum to: {filename}')
+        plt.savefig(f'{filename}.pdf')
 

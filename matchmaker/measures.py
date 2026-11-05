@@ -1,8 +1,11 @@
 import math
+
+import astropy.units as u
 import numpy as np
 import pandas as pd
-import astropy.units as u
-from astropy.cosmology import FlatLambdaCDM #, WMAP9 as cosmo
+from astropy.cosmology import FlatLambdaCDM  #, WMAP9 as cosmo
+
+DEFAULT_COSMO = FlatLambdaCDM(H0=70, Om0=0.3)
 
 luminosity_radio = lambda flux, lum_dist, z, alpha=-0.7: (flux * 4 * math.pi * lum_dist**2) / (1+z)**(1+alpha)
 
@@ -35,7 +38,7 @@ def luminosity_distance_series(redshifts:pd.Series,
                                fluxes:pd.Series,
                                output_units='W_Hz',
                                alpha=-0.7,
-                               cosmo=FlatLambdaCDM(H0=70, Om0=0.3)
+                               cosmo=DEFAULT_COSMO
                                ):
     # Possibly deprecated. TBC.
     print (redshifts)
@@ -63,7 +66,7 @@ def luminosity_distance_series(redshifts:pd.Series,
 
 def distance_atomic(redshift:float,
                     output_unit='Mpc',
-                    cosmo=FlatLambdaCDM(H0=70, Om0=0.3),
+                    cosmo=DEFAULT_COSMO,
                     with_unit=False):
     return cosmo.luminosity_distance(redshift).to(output_unit) if with_unit \
         else cosmo.luminosity_distance(redshift).to(output_unit).value
@@ -72,7 +75,7 @@ def luminosity_distance_atomic(redshift:float,
                                flux:float,
                                output_units='W_Hz',
                                alpha=-0.7,
-                               cosmo=FlatLambdaCDM(H0=70, Om0=0.3),
+                               cosmo=DEFAULT_COSMO,
                                with_unit=False):
 
     if output_units == 'W_Hz':
@@ -106,9 +109,9 @@ def luminosity_distance(redshift,
                         flux,
                         alpha=-0.7,
                         output_units='W_Hz',
-                        cosmo=FlatLambdaCDM(H0=70, Om0=0.3),
+                        cosmo=DEFAULT_COSMO,
                         with_unit=False):
-    if type(redshift) not in [np.array, pd.Series]:
+    if type(redshift) not in [np.ndarray, pd.Series]:
         return luminosity_distance_atomic(
             redshift=redshift,
             flux=flux,
@@ -127,10 +130,10 @@ def luminosity_distance(redshift,
                 cosmo=cosmo,
                 with_unit=with_unit
             )
-        elif type(redshift) is np.array:
+        elif type(redshift) is np.ndarray:
             return luminosity_distance_atomic(
-                redshift=list(redshift),
-                flux=list(flux),
+                redshift=redshift,
+                flux=flux,
                 output_units=output_units,
                 alpha=alpha,
                 cosmo=cosmo,

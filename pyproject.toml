@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matchmaker-astro"
+version = "1.1.0"
+description = "Python package to perform cross-matching of (astronomical) catalogs and manipulate results."
+readme = "README.md"
+license = { text = "BSD-3-Clause" }
+authors = [
+    { name = "D. Vohl", email = "d.vohl@uva.nl" },
+]
+keywords = ["astronomy", "catalogs", "cross-matching"]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.21",
+    "pandas>=1.3",
+    "scipy>=1.7",  # required by astropy sky matching and cosmology
+    "astropy>=5.0",
+    "astroquery>=0.4",
+    "astropy-healpix>=1.0",  # survey footprints (matchmaker.footprint), LoTSS DR3
+    "tqdm>=4.60",
+]
+
+[project.optional-dependencies]
+plot = [
+    "matplotlib>=3.5",
+    "aplpy",
+    "specutils",
+    "wget",
+]
+dev = [
+    "pytest>=7",
+    "ruff",
+]
+analysis = [
+    "matplotlib>=3.5",
+    "pandas>=1.3",   # a core dependency too, named here so the extra stands on its own
+    "emcee>=3.1",    # the hierarchical radio - star formation fit in analysis/followup
+    "corner>=2.2",   # its posterior plot
+]
+
+[project.urls]
+Repository = "https://github.com/macrocosme/matchmaker"
+
+[tool.setuptools.packages.find]
+include = ["matchmaker*", "plotmaker*", "monte_carlo*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+extend-exclude = ["archive"]  # paper-time code kept verbatim for reference
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # long lines: legacy code, not worth the churn
+    "E731",  # lambda assignments used intentionally as terse helpers
+    "E741",  # ambiguous names (l, I) common in the science code
+]

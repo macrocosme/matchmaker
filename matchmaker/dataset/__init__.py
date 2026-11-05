@@ -1,12 +1,15 @@
 """dataset.__init__.py
 """
+import os
+
 import numpy as np
 import pandas as pd
 from astropy.coordinates import SkyCoord
 
-#   
-#  Set DATA_BASE_PATH in accordance to the location of your datasets
-DATA_BASE_PATH = '../../data/'
+#
+#  Set DATA_BASE_PATH via the MATCHMAKER_DATA_PATH environment variable
+#  in accordance to the location of your datasets
+DATA_BASE_PATH = os.environ.get('MATCHMAKER_DATA_PATH', '../../data/')
 
 def box2d(obj, box_xxyy):
     df = obj.df.loc[
@@ -20,7 +23,7 @@ def box2d(obj, box_xxyy):
 def filter_dataframe_to_box(obj, boxes):
     df_boxed = pd.concat([box2d(obj, b) for b in boxes])
     df_boxed = df_boxed.reset_index().rename(
-        {'index': 'index_df_{}'.format(obj.name)},
+        {'index': f'index_df_{obj.name}'},
         axis = 'columns'
     )
     return df_boxed
@@ -160,10 +163,19 @@ class Catalog:
         df = filter_dataframe_to_box(self, boxes)
         self.df = df
 
+    def filter_footprint(self, footprint):
+        """Keep only rows inside a matchmaker.footprint.Footprint, in place.
+
+        Like filter_box, resets the index and keeps the original row number in
+        index_df_<name>, so positional masks refer to the filtered table.
+        """
+        inside = footprint.contains(self.df[self.cols.ra.label].values, self.df[self.cols.dec.label].values)
+        self.df = self.df.loc[inside].reset_index().rename({'index': f'index_df_{self.name}'}, axis='columns')
+
     def as_SkyCoord(self, mask=None, distance=None, distance_unit=None):
         if mask is None:
             df = self.df
-            is_array = (len(df)>1 is np.ndarray)
+            is_array = True  # full DataFrame: columns are Series, use .values
         else:
             try:
                 df = self.df.iloc[mask]
@@ -192,7 +204,6 @@ class Catalog:
             sc = SkyCoord(ra=df[ra_label].values * self.cols.ra.unit,
                           dec=df[dec_label].values * self.cols.dec.unit,
                           distance=distance * distance_unit)
-            sc = None
 
         return sc
 
@@ -203,7 +214,7 @@ class Catalog:
         if mask is None:
             try:
                 converted_prop = (self.df[self.cols.prop(prop).label].values * self.cols.prop(prop).unit).to(unit)
-            except:
+            except AttributeError:
                 converted_prop = (self.df[self.cols.prop(prop).label] * self.cols.prop(prop).unit).to(unit)
         else:
             try:

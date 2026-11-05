@@ -1,20 +1,46 @@
-import numpy as np
 import astropy.units as u
+import numpy as np
 import pandas as pd
 
-from . import (Catalog, Column, DATA_BASE_PATH)
-from ..utils import load_fits_as_dataframe, load, get_matched
-from ..measures import distance_atomic, luminosity_distance as _luminosity_distance, powerlaw_scale
-from ..model.lofar import power_law, sigma as lum_sfr_sigma
+from ..footprint import Footprint
+from ..measures import distance_atomic, powerlaw_scale
+from ..measures import luminosity_distance as _luminosity_distance
+from ..model.compactness import ENVELOPE_DR2, is_compact
+from ..model.lofar import power_law
+from ..model.lofar import sigma as lum_sfr_sigma
+from ..utils import get_matched, load_fits_as_dataframe
+from . import DATA_BASE_PATH, Catalog, Column
+
 
 class Lotss(Catalog):
+    """LoTSS source catalogue, DR2 (default) or DR3.
+
+    release='dr2': LoTSS_DR2_v110_masked.srl.fits, 6" everywhere, footprint as three RA/Dec
+    boxes (as in Vohl+2023), area 5,635 deg^2.
+    release='dr3': LoTSS_DR3_v1.0.srl.fits (Shimwell+2026). Resolution is 6" or 9" per source
+    (Resolution column; not a clean declination cut). The footprint is built from all source
+    positions at load time (self.footprint, before any cuts), and self.area comes from it.
+    """
     file_location = DATA_BASE_PATH + 'lotss/LoTSS_DR2_v110_masked.srl.fits'
+    file_location_dr3 = DATA_BASE_PATH + 'lotss/LoTSS_DR3_v1.0.srl.fits'
     name = 'lotss'
     boxes = None
+    footprint = None
 
     field_file_location = DATA_BASE_PATH + 'lotss/obslist.csv'
 
-    def __init__(self, load_data=True, constrain=False, smin=None, compact_only=False, single_only=False):
+    def __init__(self, load_data=True, constrain=False, smin=None, compact_only=False, single_only=False,
+                 release='dr2', footprint_nside=256, min_snr=None, compactness_params=None):
+        if release not in ('dr2', 'dr3'):
+            raise ValueError(f"release must be 'dr2' or 'dr3', not {release!r}")
+        self.release = release
+        self.footprint_nside = footprint_nside
+        # R99.9 envelope coefficients: one tuple, or {resolution_arcsec: tuple}. DR2 uses the
+        # published Shimwell+2022 values; DR3 publishes none, so they must be measured first
+        # (analysis/07_compactness_refit.py) and passed in.
+        self.compactness_params = compactness_params or (ENVELOPE_DR2 if release == 'dr2' else None)
+        if release == 'dr3':
+            self.file_location = type(self).file_location_dr3
         # Required and practical columns
         super().__init__(ra=Column('RA', u.deg), dec=Column('DEC', u.deg))
         self.cols.ra_err = Column('E_RA', u.arcsec)
@@ -30,10 +56,19 @@ class Lotss(Catalog):
         }
 
         self.area_dr2 = (4178 * u.deg**2) + (1457 * u.deg**2)
+        self.area = self.area_dr2 if release == 'dr2' else None   # DR3: set from the footprint on load
         self.central_frequency = 144 * u.MHz
         self.frequency_band = None
 
         self.set_survey_specific_columns()
+        if release == 'dr3':
+            # DR3 drops the mosaic bookkeeping and adds per-source resolution and island flux
+            for gone in ('mosaic_id', 'masked_fraction'):
+                delattr(self.cols.radio, gone)
+            self.cols.radio.resolution = Column('Resolution', u.arcsec, 'restoring beam: 6" or 9"')
+            self.cols.radio.healpix = Column('HEALPIX', None, 'nside-16 mosaic tile; not a per-source footprint')
+            self.cols.radio.isl_total_flux = Column('Isl_Total_flux', u.mJy)
+            self.cols.radio.e_isl_total_flux = Column('E_Isl_Total_flux', u.mJy)
 
         self.cols.measure = Column()
         self.cols.measure.total_flux = self.cols.radio.total_flux
@@ -43,30 +78,43 @@ class Lotss(Catalog):
         self.cols.measure.peak_flux_err = self.cols.radio.e_peak_flux
 
         if load_data:
-            self.load_data(constrain=constrain, smin=smin, compact_only=compact_only, single_only=single_only)
+            self.load_data(constrain=constrain, smin=smin, compact_only=compact_only, single_only=single_only,
+                           min_snr=min_snr)
 
-    def load_data(self, constrain=False, smin=None, compact_only=False, single_only=False):
+    def load_data(self, constrain=False, smin=None, compact_only=False, single_only=False, min_snr=None):
+        """Load the catalogue; with constrain=True apply the requested cuts.
+
+        smin: Total_flux >= smin (mJy). min_snr: Total_flux / Isl_rms >= min_snr, the local
+        significance (DR3 detects >95% of compact sources above 9, Shimwell+2026).
+        compact_only: DR2 R99.9 envelope (refused for DR3). single_only: S_Code == 'S'.
+        """
         # LOAD LOTSS MAIN TABLE
-        df = load_fits_as_dataframe(self.file_location)
-        self.df = df
+        self.df = load_fits_as_dataframe(self.file_location)
+
+        if self.release == 'dr3':
+            # The survey footprint comes from every catalogued source, before any cuts
+            self.footprint = Footprint.from_positions(self.df[self.cols.ra.label].values,
+                                                      self.df[self.cols.dec.label].values,
+                                                      nside=self.footprint_nside,
+                                                      values=self.resolution())
+            self.area = self.footprint.area
 
         if constrain:
-            # _smin = 0.8 if smin is None else smin
+            if compact_only and self.compactness_params is None:
+                raise NotImplementedError(
+                    f'no R99.9 envelope for release {self.release}: measure one with '
+                    'analysis/07_compactness_refit.py and pass compactness_params')
+            const = np.ones(len(self.df), dtype=bool)
             if smin is not None:
-                const = (self.df[self.cols.measure.total_flux.label] >= smin) # 90% complete point-sources
-
+                const &= (self.df[self.cols.measure.total_flux.label] >= smin).values  # on Total_flux
+            if min_snr is not None:
+                snr = self.df[self.cols.measure.total_flux.label] / self.df[self.cols.radio.isl_rms.label]
+                const &= (snr >= min_snr).values
             if compact_only:
-                self.df['compact'] = self.r99_sigmoid(return_indices=False)
-                try:
-                    const &= (self.df['compact'] == True)
-                except UnboundLocalError:
-                    const = (self.df['compact'] == True)
-
+                self.df['compact'] = self.compact_mask()
+                const &= self.df['compact'].values
             if single_only:
-                try:
-                    const &= (self.df[self.cols.radio.s_code.label] == 'S')  # single component
-                except UnboundLocalError:
-                    const = (self.df[self.cols.radio.s_code.label] == 'S')  # single component
+                const &= (self.df[self.cols.radio.s_code.label] == 'S').values        # single component
             df = self.df.loc[const]
             df = df.reset_index().rename(
                 {'index': 'index_df_original'},
@@ -74,12 +122,28 @@ class Lotss(Catalog):
             )
             self.df = df
 
-        self.set_dr2_regions_boxes()
+        if self.release == 'dr2':
+            self.set_dr2_regions_boxes()
         self.n_source = len(self.df)
 
         # LOAD LOTSS FIELDS LIST
         self.fields = Column()
-        self.fields.df = pd.read_csv(self.field_file_location)
+        # obslist.csv is optional (only get_closest_field uses it); guard as the paper-time version did
+        try:
+            self.fields.df = pd.read_csv(self.field_file_location)
+        except FileNotFoundError:
+            self.fields.df = None
+
+    def resolution(self, mask=None):
+        """Restoring-beam FWHM in arcsec per row: the Resolution column for DR3, 6 for DR2.
+
+        DR3 stores the 6" beam with conversion noise (6.000000000000001, 5.999999999999997), so values
+        are rounded to 0.1" to make them comparable.
+        """
+        df = self.df if mask is None else self.df.iloc[mask]
+        if self.release == 'dr3':
+            return np.round(df[self.cols.radio.resolution.label].to_numpy(dtype=float), 1)
+        return np.full(len(df), 6.0)
 
     def semi_major(self, mask=None, with_unit=False, to_unit=None):
         a = self.prop_to_unit('major', self.cols.major.unit, mask=mask, with_unit=with_unit) / 2
@@ -102,7 +166,7 @@ class Lotss(Catalog):
                 b = b.to(to_unit)
 
         return b
-    
+
     def set_distance(self, source:Catalog):
         # Add distance columns information
 
@@ -216,7 +280,7 @@ class Lotss(Catalog):
         sfr = matched_obj1[obj1.cols.sfr.label]
         if verbose:
             nulls = 0
-            for l, s in zip(lum_w_hz, sfr):
+            for _l, s in zip(lum_w_hz, sfr):
                 if np.isnan(s):
                     nulls += 1
             print ('count(sfr==nan):', nulls)
@@ -253,28 +317,40 @@ class Lotss(Catalog):
         s_n = matches['Total_flux']/matches['E_Total_flux']
         return s_n
 
-    def filter_mask_to_r99_sigmoid(self, catalog_name):
-        # Subset of source-target cross-section where source size in LoTSS is less or equal to R99.9 sigmoid (Shimwell+2022)
-        # matches = self.df.iloc[self.matches[catalog_name].filtered_idx]
-        si_sp = self.si_sp(catalog_name)
-        s_n = self.sn(catalog_name)
-        sigmoid = (0.42 + (1.08 / (1+(s_n/96.57)**2.49)))
+    def compact_mask(self, mask=None):
+        """True where ln(S_I/S_P) lies below the R99.9 envelope (Shimwell+2019, 2022).
 
-        # filtered_compact_idx and be used in conjunction with mask_idx and filtered_idx.
-        # E.g. source.df.iloc[self.matches[source.name].mask_idx[self.matches[source.name].filtered_compact_idx]]
-        # E.g. self.df.iloc[self.matches[source.name].filtered_idx[self.matches[source.name].filtered_compact_idx]]
-        self.matches[catalog_name].filtered_compact_idx = np.where(si_sp <= sigmoid)[0]
+        Uses self.compactness_params, which may be a single (a, b, c, d) tuple or a dict keyed by
+        resolution in arcsec, as DR3 needs (its 6" and 9" imaging have different envelopes).
+        """
+        if self.compactness_params is None:
+            raise NotImplementedError(f'no R99.9 envelope for release {self.release}')
+        df = self.df if mask is None else self.df.iloc[mask]
+        ln_si_sp = np.log(df[self.cols.measure.total_flux.label] / df[self.cols.measure.peak_flux.label]).values
+        snr = (df[self.cols.measure.total_flux.label] / df[self.cols.measure.total_flux_err.label]).values
+        if not isinstance(self.compactness_params, dict):
+            return is_compact(ln_si_sp, snr, self.compactness_params)
+        out = np.zeros(len(df), dtype=bool)
+        res = self.resolution(mask=mask)
+        for resolution, params in self.compactness_params.items():
+            here = res == float(resolution)
+            if here.any():
+                out[here] = is_compact(ln_si_sp[here], snr[here], params)
+        return out
+
+    def filter_mask_to_r99_sigmoid(self, catalog_name):
+        """Index (into the matched set) of the matches whose LoTSS source is compact.
+
+        filtered_compact_idx is used together with mask_idx and filtered_idx, e.g.
+        self.df.iloc[self.matches[name].filtered_idx[self.matches[name].filtered_compact_idx]]
+        """
+        compact = self.compact_mask(mask=self.matches[catalog_name].filtered_idx)
+        self.matches[catalog_name].filtered_compact_idx = np.where(compact)[0]
 
     def r99_sigmoid(self, mask=None, return_indices=False):
-        df = self.df if mask is None else self.df.iloc[mask]
-
-        si_sp = np.log(df['Total_flux']/df['Peak_flux'])
-        s_n = df['Total_flux']/df['E_Total_flux']
-        sigmoid = (0.42 + (1.08 / (1+(s_n/96.57)**2.49)))
-        if not return_indices:
-            return si_sp <= sigmoid
-        else:
-            return np.where(si_sp <= sigmoid)[0]
+        """Backwards-compatible wrapper for compact_mask."""
+        compact = self.compact_mask(mask=mask)
+        return np.where(compact)[0] if return_indices else compact
 
     def filter_mask_to_beam_size(self, catalog_name):
         # Subset of source-target cross-section where source size in LoTSS is less or equal to beam size

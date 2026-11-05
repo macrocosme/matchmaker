@@ -1,8 +1,10 @@
+import astropy.units as u
 import numpy as np
 import pandas as pd
-import astropy.units as u
-from . import (Catalog, Column, DATA_BASE_PATH)
+
 from ..model import wise
+from . import DATA_BASE_PATH, Catalog, Column
+
 
 class Clu(Catalog):
     file_location = DATA_BASE_PATH + 'clu/CLU_20190708_marshalFormat.csv'
@@ -48,7 +50,7 @@ class Clu(Catalog):
                 if constrain_sfr:
                     try:
                         const &= (~self.df['sfr_fuv'].isna())
-                    except:
+                    except UnboundLocalError:
                         const = (~self.df['sfr_fuv'].isna())
                 df = self.df.loc[const]
             self.df = df
@@ -65,14 +67,13 @@ class Clu(Catalog):
         return a if with_unit else a.value
 
     def semi_minor(self, mask=None, with_unit=False, to_unit=None):
-        if type(mask) is not np.ndarray:
-            is_array = False
+        is_array = (type(mask) is np.ndarray)   # was only ever set to False -> UnboundLocalError for arrays
 
         a = self.df[self.cols.a.label].values if mask is None else \
             self.df.iloc[mask][self.cols.a.label].values if is_array else self.df.iloc[mask][self.cols.a.label]
         b2a = self.df[self.cols.b2a.label].values if mask is None else self.df.iloc[mask][self.cols.b2a.label]
         if is_array:
-            b2a.fillna(1, inplace=True)
+            b2a = b2a.fillna(1)
             b2a = b2a.values
         minor = (a * b2a) * self.cols.a.unit
 
@@ -90,15 +91,11 @@ class Clu(Catalog):
     #     return False if len(np.where(w1w2 < 0.75)[0]) > 0 else True
 
     def non_agn_mask(self, mask=None):
-        from matplotlib.path import Path
+        """True for objects outside the Jarrett+2011 WISE AGN box (NaN colours count as non-AGN)."""
         df = self.df if mask is None else self.df.iloc[mask]
         w1w2 = df['w1mpro'] - df['w2mpro']
         w2w3 = df['w2mpro'] - df['w3mpro']
-
-        if type(w2w3) in [float, np.float32, np.float64]:
-            return ~Path(wise.AGN_color_color_box).contains_point([w2w3, w1w2])
-        else:
-            return ~Path(wise.AGN_color_color_box).contains_points(np.array([w2w3, w1w2]).T)
+        return ~wise.agn_mask(w1w2, w2w3)
 
 
     def set_survey_specific_columns(self):

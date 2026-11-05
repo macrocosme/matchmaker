@@ -1,9 +1,10 @@
-from astroquery.sdss import SDSS
-from astroquery.esasky import ESASky
-from astroquery.vizier import Vizier
-from astroquery.simbad import Simbad
-from astroquery.ned import Ned
 import astropy.units as u
+from astroquery.esasky import ESASky
+from astroquery.ned import Ned
+from astroquery.sdss import SDSS
+from astroquery.simbad import Simbad
+from astroquery.vizier import Vizier
+
 
 def search_sdss(sky_coords, mask, get_spectra=True, get_images=False):
     sdss_matches = {}

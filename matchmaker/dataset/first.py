@@ -1,7 +1,7 @@
-import pandas as pd
 import astropy.units as u
-from . import (Catalog, Column, DATA_BASE_PATH)
+
 from ..utils import load_fits_as_dataframe
+from . import DATA_BASE_PATH, Catalog, Column
 
 
 class First(Catalog):

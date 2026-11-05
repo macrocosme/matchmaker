@@ -1,9 +1,9 @@
+import _pickle as cPickle
+import bz2
 import os
 import pickle
-import bz2
-import _pickle as cPickle
+
 import numpy as np
-import pandas as pd
 from astropy.io import fits
 from astropy.table import Table
 
@@ -117,7 +117,7 @@ def load_fits_as_table(file_location):
         table = Table(hdul[1].data)
     return table
 
-def get_matched(fn, thres=0.95):
+def get_matched_above_threshold(fn, thres=0.95):
     df = load_fits_as_dataframe(fn)
     matched = df.loc[
         (df['p_any'] > thres) & (df['p_i'] > thres)

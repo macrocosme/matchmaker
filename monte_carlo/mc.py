@@ -1,155 +1,149 @@
-import os
-import sys
-import numpy as np
+"""Chance-association Monte Carlo: how many L-SFR outliers appear from unrelated pairs?
 
-from tqdm import tqdm
-import copy
+The original version estimated this by shifting every LoTSS position by a random offset, re-running the
+cross-match and the +3 sigma outlier selection, and counting what survived. This rewrite keeps
+that experiment and generalises it to DR3 (per-source matching radius, footprint), with two
+changes:
 
-# Add module path to system path
-module_paths = ['..']
-for module_path in module_paths:
-    if os.path.abspath(os.path.join(module_path)) not in sys.path:
-        sys.path.insert(0, module_path)
-        
+- **The galaxies are shifted, not the radio sources.** Only the relative offset matters, and a
+  galaxy catalogue is small: the radio positions can then be put in one search tree that is
+  reused across realisations. On DR3 that is ~37,000 shifted positions against a fixed tree of
+  5.6 million sources, which takes a second per realisation instead of rebuilding the tree.
+- **Right-ascension offsets are divided by cos(dec)**, so the displacement is a true angle. The
+  original version shifted RA in degrees directly, which at dec = 60 is half the intended
+  offset.
+
+The original version also deep-copied and pickled the whole dataset dictionary for every
+realisation; this one keeps arrays and returns them.
+"""
 import astropy.units as u
-from matchmaker.matchmaker.crossmatch import crossmatch
-from matchmaker.matchmaker.utils import save, load
+import numpy as np
+from astropy.coordinates import SkyCoord
+
+from matchmaker.measures import luminosity_distance
+from matchmaker.model.lofar import power_law
+from matchmaker.model.lofar import sigma as LSFR_SIGMA
+
+LOG_LSFR_SIGMA = np.log10(LSFR_SIGMA)
 
 
-def apply_rand_shift(ra, dec, shift):
-    # ra_offset = (((np.random.rand()-1)*shift) * u.arcmin).to(u.deg)
-    # dec_offset = (((np.random.rand()-1)*shift) * u.arcmin).to(u.deg)
-    ra_offset = (np.random.uniform(-shift, shift) * u.arcmin).to(u.deg)
-    dec_offset = (np.random.uniform(-shift, shift) * u.arcmin).to(u.deg)
-    
-    # ra_ = (ra + np.random.normal(scale=scale))
-    ra_ = (ra + ra_offset)
-    ra_[np.where(ra_ > 360)[0]] = ra_[np.where(ra_ > 360)[0]] - 360
-    ra_[np.where(ra_ < 0)[0]] = 360 + ra_[np.where(ra_ < 0)[0]]
-
-    # dec_ = (dec + np.random.normal(scale=20))
-    dec_ = dec + dec_offset
-    dec_[np.where(dec_ > 90)[0]] = -(dec_[np.where(dec_ > 90)[0]] - 90)
-    dec_[np.where(dec_ < -90)[0]] = -(dec_[np.where(dec_ < -90)[0]] + 90)
-    return ra_, dec_, ra_offset, dec_offset
+def random_offsets(n, shift_arcmin, dec_deg, rng):
+    """Uniform offsets in a +/- shift_arcmin box, as true angles (RA scaled by 1/cos(dec))."""
+    off = rng.uniform(-shift_arcmin, shift_arcmin, size=(2, n)) / 60.0
+    return off[0] / np.cos(np.radians(dec_deg)), off[1]
 
 
+def shift_positions(ra, dec, d_ra, d_dec):
+    """Apply offsets in degrees, wrapping RA and reflecting at the poles."""
+    new_ra = (np.asarray(ra) + d_ra) % 360.0
+    new_dec = np.asarray(dec) + d_dec
+    over = new_dec > 90
+    new_dec[over] = 180 - new_dec[over]
+    under = new_dec < -90
+    new_dec[under] = -180 - new_dec[under]
+    new_ra[over | under] = (new_ra[over | under] + 180) % 360.0
+    return new_ra, new_dec
 
-# Main
-def run_mc(state_prefix_input, state_prefix, theta, nsigma = 3, shift=10, base_folder='states'):
-    datasets = load('datasets', state_prefix=state_prefix_input)
 
-    n_cands, n_cands_all, matches, ra_offsets, dec_offsets = [], [], [], [], []
-    x1, x2, y1, y2 = [], [], [], []
+def run(galaxy_ra, galaxy_dec, galaxy_z, galaxy_sfr, radio_coords, radio_flux,
+        radius_arcsec, radio_sigma_arcsec=None, n_sigma_position=1.0, n_sigma_lsfr=3.0,
+        alpha=-0.8, n_realisations=1000, shift_arcmin=10.0, footprint=None, region=None,
+        rng=None, progress=False, relation=None, scatter_dex=None, galaxy_mstar=None):
+    """Counts of chance matches and chance L-SFR outliers, one entry per realisation.
 
-    mc_datasets = {}
-    ra_label, dec_label = datasets['lotss'].cols.ra.label, datasets['lotss'].cols.dec.label
+    Parameters mirror the real selection, so pass exactly what the search used:
+    radius_arcsec is a scalar (DR2's 6") or one value per radio source (DR3's resolution);
+    radio_sigma_arcsec is the radio positional uncertainty per source, added as
+    n_sigma_position * sigma, as matchmaker.crossmatch does. Luminosities use the galaxy's
+    redshift with the unrelated source's flux, which is the point of the exercise.
 
+    footprint (matchmaker.footprint.Footprint) drops shifted galaxies that land outside the
+    survey; region, if given with a footprint, is a per-galaxy label whose counts are returned
+    separately (e.g. the 6" and 9" parts of DR3).
+
+    relation and scatter_dex replace the Gurkan+2018 luminosity - star formation relation and
+    its 0.161 dex scatter, so the chance expectation can be computed against a relation measured
+    from the data rather than the assumed one. Pass the same pair the selection used, or the
+    excess is a comparison between two different definitions of outlier. With galaxy_mstar the
+    relation is called as relation(sfr, mstar), for a relation that carries a stellar-mass term;
+    the mass belongs to the galaxy, as the redshift does, while the flux belongs to the
+    unrelated radio source, which is the whole point of the experiment.
+
+    Returns a dict of arrays: n_galaxies, n_matches, n_outliers (plus n_matches_<label> and
+    n_outliers_<label> per region).
     """
-    I want to break this loop into chunks
+    rng = np.random.default_rng() if rng is None else rng
+    ra = np.asarray(galaxy_ra, dtype=float)
+    dec = np.asarray(galaxy_dec, dtype=float)
+    z = np.asarray(galaxy_z, dtype=float)
+    sfr = np.asarray(galaxy_sfr, dtype=float)
+    mstar = None if galaxy_mstar is None else np.asarray(galaxy_mstar, dtype=float)
+    flux = np.asarray(radio_flux, dtype=float)
+    radius = np.asarray(radius_arcsec, dtype=float)
+    sigma = None if radio_sigma_arcsec is None else np.asarray(radio_sigma_arcsec, dtype=float)
+    predict = power_law if relation is None else relation
+    log_sigma = LOG_LSFR_SIGMA if scatter_dex is None else float(scatter_dex)
+    labels = [] if region is None else sorted(set(np.asarray(region)))
+    out = {k: [] for k in ['n_galaxies', 'n_matches', 'n_outliers']
+           + [f'{k}_{v}' for v in labels for k in ('n_matches', 'n_outliers')]}
+
+    steps = range(n_realisations)
+    if progress:
+        from tqdm import tqdm
+        steps = tqdm(steps)
+    for _ in steps:
+        d_ra, d_dec = random_offsets(len(ra), shift_arcmin, dec, rng)
+        new_ra, new_dec = shift_positions(ra, dec, d_ra, d_dec)
+        keep = np.ones(len(ra), dtype=bool) if footprint is None else footprint.contains(new_ra, new_dec)
+        idx, sep, _ = SkyCoord(new_ra[keep] * u.deg, new_dec[keep] * u.deg).match_to_catalog_sky(radio_coords)
+
+        accept = radius[idx] if radius.ndim else radius
+        if sigma is not None:
+            accept = accept + n_sigma_position * sigma[idx]
+        matched = sep.arcsec <= accept
+
+        z_m, sfr_m = z[keep][matched], sfr[keep][matched]
+        with np.errstate(divide='ignore', invalid='ignore'):
+            log_l = np.log10(luminosity_distance(z_m, flux[idx[matched]], alpha=alpha))
+            expected = (predict(sfr_m) if mstar is None
+                        else predict(sfr_m, mstar[keep][matched]))
+            sigma_lsfr = (log_l - np.log10(expected)) / log_sigma
+        outlier = sigma_lsfr >= n_sigma_lsfr
+
+        out['n_galaxies'].append(int(keep.sum()))
+        out['n_matches'].append(int(matched.sum()))
+        out['n_outliers'].append(int(np.nansum(outlier)))
+        if labels:
+            reg = np.asarray(region)[keep][matched]
+            for v in labels:
+                here = reg == v
+                out[f'n_matches_{v}'].append(int(here.sum()))
+                out[f'n_outliers_{v}'].append(int(np.nansum(outlier & here)))
+    return {k: np.array(v) for k, v in out.items()}
+
+
+def from_catalogs(clu, lotss, radius_arcsec=None, **kwargs):
+    """Run the Monte Carlo from loaded Catalog objects (either release).
+
+    The radius defaults to each LoTSS source's resolution for DR3 and 6" for DR2, matching what
+    the selection used. Pass the same cuts: the catalogues must already be constrained.
     """
-    for m in tqdm(range(1000)):
-        mc_datasets = copy.deepcopy(datasets)
-        
-        # Make input smaller if possible
-        del mc_datasets['clu_all']
-        try:        
-            del mc_datasets['sdss_matched']
-            del mc_datasets['sdss_matched_multiple']
-            del mc_datasets['vlass']
-            del mc_datasets['first']
-            del mc_datasets['nvss']
-            del mc_datasets['lolss']
-            del mc_datasets['spectral_indices']
-            del mc_datasets['reines']
-        except: 
-            pass
-        
-        mc_datasets['lotss'].df.drop(['index_df_original', 'Peak_flux', 'E_Peak_flux', 'Maj',
-                                    'E_Maj', 'Min', 'E_Min', 'DC_Maj', 'E_DC_Maj', 'DC_Min', 'E_DC_Min',
-                                    'PA', 'E_PA', 'DC_PA', 'E_DC_PA', 'Isl_rms', 'S_Code', 'Mosaic_ID',
-                                    'Number_Pointings', 'Masked_Fraction'], axis=1)
-        mc_datasets['clu'].df.drop([
-            'index_df_clu', 'cluid', 'id_other', 'a', 'b2a', 'pa', 'type_ned', 'name_galex', 'ra_galex', 'dec_galex', 'fuv', 'fuverr', 
-            'nuv', 'nuverr', 'name_sdss', 'ra_sdss', 'dec_sdss', 'modelmag_u', 'modelmagerr_u', 'modelmag_g', 'modelmagerr_g', 
-            'modelmag_r', 'modelmagerr_r', 'modelmag_i', 'modelmagerr_i', 'modelmag_z', 'modelmagerr_z', 'name_ps1', 'ra_ps1', 
-            'dec_ps1', 'kronmag_g', 'kronmagerr_g', 'kronmag_r', 'kronmagerr_r', 'kronmag_i', 'kronmagerr_i', 'kronmag_z', 
-            'kronmagerr_z', 'kronmag_y', 'kronmagerr_y', 'name_2mass', 'ra_2mass', 'dec_2mass', 'r_k20fe', 'j_m_k20fe', 
-            'j_msig_k20fe', 'j_flg_k20fe', 'h_m_k20fe', 'h_msig_k20fe', 'h_flg_k20fe', 'k_m_k20fe', 'k_msig_k20fe', 'k_flg_k20fe', 
-            'name_wise', 'ra_wise', 'dec_wise', 'w4mpro', 'w4sigmpro', 'w4snr', 'm21', 'm21err', 'name_cluha', 'ra_cluha', 
-            'dec_cluha', 'maxcsig', 'cluhamag', 'cluhamagerr', 'sfr_ha', 'sfr_haerr', 'btc', 'btcerr', 'b_r25', 'b_r25err', 
-            'magb', 'magberr', 'lum_b', 'lum_berr', 'source', 'btc_source', 'size_source', 'dm_source', 'z_source', 'flags'        
-        ], axis=1)
-        
-
-        # Start shifted cross-matching process
-        ra, dec = mc_datasets['lotss'].df[ra_label], mc_datasets['lotss'].df[dec_label]
-        mc_datasets['lotss'].df[ra_label], mc_datasets['lotss'].df[dec_label], ra_offset, dec_offset = apply_rand_shift(ra, dec, shift)
-
-        crossmatch(mc_datasets['clu'],
-                mc_datasets['lotss'],
-                sep=theta,
-                unit_sep=u.arcsec,
-                ellipse_filter=False)
-
-        mc_datasets['lotss'].set_distance(mc_datasets['clu'])
-
-        match = mc_datasets['lotss'].matches['clu']
-        mc_datasets['lotss'].select_lum_sfr_outliers(mc_datasets['clu'], 
-                                                    mask1=match.mask_idx, 
-                                                    mask2=match.filtered_idx,
-                                                    n_sigma=nsigma, 
-                                                    verbose = False)
-
-        # mask1 = match.mask_idx[match.filtered_l_sfr_idx]
-        mask2 = match.filtered_idx[match.filtered_l_sfr_idx]
-
-        n_cands_all.append(len(copy.deepcopy(match.filtered_idx)))
-        n_cands.append(len(copy.deepcopy(mc_datasets['lotss'].df.iloc[mask2])))
-        matches.append(match)
-        ra_offsets.append(copy.deepcopy(ra_offset))
-        dec_offsets.append(copy.deepcopy(dec_offset))
-        
-        #L-SFR
-        #all
-        x1.extend(copy.deepcopy(mc_datasets['clu'].df.iloc[match.mask_idx]['sfr_fuv'].values))
-        y1.extend(copy.deepcopy(mc_datasets['lotss'].luminosity_distance(mask=match.filtered_idx)))
-        #outliers
-        x2.extend(copy.deepcopy(mc_datasets['clu'].df.iloc[match.mask_idx[match.filtered_l_sfr_idx]]['sfr_fuv'].values))
-        y2.extend(copy.deepcopy(mc_datasets['lotss'].luminosity_distance(mask=match.filtered_idx[match.filtered_l_sfr_idx])))
-        
-        match.monte_carlo = {}
-        match.monte_carlo['ra_offset'] = copy.deepcopy(ra_offset)
-        match.monte_carlo['ra_offset'] = copy.deepcopy(dec_offset)
-        
-        del mc_datasets['clu']
-        del mc_datasets['lotss'].df
-
-        save('datasets_{}_{}'.format(m, theta), mc_datasets, state_prefix='mc', folder=f'{base_folder}/monte_carlo')
-        del mc_datasets
-
-    # After all realisations are processed, save results
-    ncands = np.array(n_cands)
-    ncands_all = np.array(n_cands_all)
-
-    # Saves information for 
-    save('ncands_{}'.format(theta), [ncands, ncands_all, matches, ra_offsets, dec_offsets], state_prefix=state_prefix, folder=f'{base_folder}')
-    save('x1x2y1y2_{}'.format(theta), [np.array(x1), np.array(x2), np.array(y1), np.array(y2)], state_prefix='mc', folder='states/monte_carlo/mass_only')
+    if radius_arcsec is None:
+        radius_arcsec = lotss.resolution() if getattr(lotss, 'release', 'dr2') == 'dr3' else 6.0
+    radio = SkyCoord(lotss.df[lotss.cols.ra.label].values * u.deg,
+                     lotss.df[lotss.cols.dec.label].values * u.deg)
+    sigma = np.hypot(lotss.df[lotss.cols.ra_err.label].values, lotss.df[lotss.cols.dec_err.label].values)
+    if kwargs.get('galaxy_mstar') is None and getattr(clu.cols, 'mstar', None) is not None:
+        label = clu.cols.mstar.label
+        if label in clu.df:
+            kwargs['galaxy_mstar'] = clu.df[label].values
+    return run(clu.df[clu.cols.ra.label].values, clu.df[clu.cols.dec.label].values,
+               clu.df[clu.cols.z.label].values, clu.df[clu.cols.sfr.label].values,
+               radio, lotss.df[lotss.cols.measure.total_flux.label].values,
+               radius_arcsec, radio_sigma_arcsec=sigma, **kwargs)
 
 
-
-# Example of master script:
-datasets = {}
-
-# Input data 
-_theta = 6
-state_prefix_input = 'paper_mass_flux_const_{}_arcsec_single_only'.format(_theta)
-"""
-I want to run the following script on various values of theta (e.g. 1 to 10 arcsec)
-"""
-for theta in np.arange(1, 11, 1):
-    # Processed data
-    state_prefix = 'monte_carlo_mass_only_1000_shift_{}_arcmin'.format(theta)
-
-    # Compute 1000 realisations using a cross-matching limit of `theta` arcsec
-    run_mc(state_prefix_input, state_prefix, theta, base_folder='states')
+def p_value(counts, observed):
+    """Fraction of realisations with at least `observed` chance outliers (0 means < 1/N)."""
+    counts = np.asarray(counts)
+    return float(np.mean(counts >= observed))
