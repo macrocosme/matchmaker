@@ -6,11 +6,11 @@
     "datePublished": "2023-05-09",
     "dateModified": "2026-11-05",
     "name": "matchmaker",
-    "version": "v1.1.0",
+    "version": "v2.0.0",
     "description": "matchmaker is a python package to perform cross-matching of (astronomical) catalogs and manipulate results.",
     "applicationCategory": "Astronomy",
     "readme": "https://github.com/macrocosme/matchmaker",
-    "softwareVersion": "v1.1.0",
+    "softwareVersion": "v2.0.0",
     "keywords": [
         "Catalogs cross-matching"
     ],
